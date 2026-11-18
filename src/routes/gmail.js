@@ -14,6 +14,10 @@ router.get('/gmail/conectar', async (req, res) => {
     setFlash(req, 'error', 'Gmail aún no está configurado en el servidor (faltan GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET).');
     return res.redirect('/bandeja');
   }
+  if (!req.query.acepto) {
+    setFlash(req, 'error', 'Para conectar Gmail primero acepta cómo se usarán tus correos.');
+    return res.redirect('/bandeja');
+  }
   const state = crypto.randomBytes(16).toString('hex');
   req.session.gmailState = state;
   res.redirect(gmail.authUrl(req, state));
@@ -68,9 +72,16 @@ router.post('/gmail/sincronizar', async (req, res) => {
 
 // Remitentes autorizados (RC-02)
 router.post('/gmail/remitentes', (req, res) => {
-  const sender = String(req.body.sender || '').trim().toLowerCase();
-  if (!sender || !sender.includes('@')) {
-    setFlash(req, 'error', 'Escribe el correo del remitente (ej. alertas@bancolombia.com).');
+  // Correo exacto (alertas@banco.com) o dominio (notificacionesbancolombia.com, RC-17)
+  const sender = String(req.body.sender || '').trim().toLowerCase().replace(/^@/, '');
+  const isEmail = /^[^\s@()]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(sender);
+  const isDomain = /^([a-z0-9-]+\.)+[a-z]{2,}$/.test(sender);
+  if (!isEmail && !isDomain) {
+    setFlash(req, 'error', 'Escribe un correo (alertas@banco.com) o un dominio (notificacionesbancolombia.com).');
+    return res.redirect('/bandeja');
+  }
+  if (db.prepare('SELECT 1 FROM email_senders WHERE user_id = ? AND sender = ? AND active = 1').get(req.user.id, sender)) {
+    setFlash(req, 'info', `${sender} ya estaba autorizado.`);
     return res.redirect('/bandeja');
   }
   db.prepare('INSERT INTO email_senders (user_id, bank_id, sender, label) VALUES (?, ?, ?, ?)')

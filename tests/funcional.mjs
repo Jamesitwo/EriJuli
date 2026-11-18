@@ -58,7 +58,11 @@ async function step(name, p, data, check) {
 try {
   // ----- Cuenta y sesión
   await get('/registro');
-  let r = await post('/registro', { name: 'Julieth Prueba', email: 'qa@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual' });
+  let r = await post('/registro', { name: 'Sin consentimiento', email: 'nc@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual' });
+  ok(r.status === 302 && /registro/.test(r.loc || '') && !one("SELECT 1 FROM users WHERE email = 'nc@erijuli.co'"), 'Registro exige aceptar la privacidad (RN-04)', r.loc);
+  r = await get('/privacidad'); ok(r.status === 200 && /uso limitado/i.test(r.text) && /gmail\.readonly/.test(r.text), 'Política de privacidad pública (RN-04)', r.status);
+  await get('/registro');
+  r = await post('/registro', { name: 'Julieth Prueba', email: 'qa@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual', acepto_privacidad: '1' });
   ok(r.status === 302 && r.loc === '/', 'Registro', `${r.status} ${r.loc}`);
   r = await post('/logout', {}); ok(r.status === 302, 'Cerrar sesión');
   r = await get('/'); ok(r.status === 302 && /login/.test(r.loc || ''), 'Rutas protegidas sin sesión', r.loc);
@@ -71,6 +75,10 @@ try {
   await get('/');
   const U = one('SELECT id FROM users').id;
   ok(one('SELECT COUNT(*) n FROM categories WHERE user_id = ?', U).n >= 11, 'Categorías iniciales');
+  ok(!!one("SELECT privacy_accepted_at FROM users WHERE id = ?", U).privacy_accepted_at, 'Se guarda la fecha de aceptación de la privacidad');
+  const cashBank = one("SELECT * FROM banks WHERE user_id = ? AND kind = 'efectivo'", U);
+  const billetera = cashBank && one("SELECT * FROM containers WHERE bank_id = ? AND kind = 'cuenta'", cashBank.id);
+  ok(!!billetera && billetera.name === 'Billetera', 'Cuenta nueva trae Efectivo · Billetera sin banco (RF-09)');
 
   // ----- Bancos y bolsillos
   await step('Crear banco', '/bancos', { name: 'Bancolombia', color: '#e9a92c' });
@@ -376,7 +384,7 @@ try {
   ok(!!one("SELECT transaction_id FROM household_expenses WHERE description = 'Mercado'").transaction_id, 'También quedó en mis movimientos');
   const mainCookie = cookie;
   cookie = ''; await get('/registro');
-  await post('/registro', { name: 'Eri', email: 'eri@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual' });
+  await post('/registro', { name: 'Eri', email: 'eri@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual', acepto_privacidad: '1' });
   const U2 = one("SELECT id FROM users WHERE email = 'eri@erijuli.co'").id;
   await get('/hogar');
   await step('Unirse con el código', '/hogar/unirse', { code: hh.invite_code.toLowerCase() });
@@ -396,14 +404,78 @@ try {
     r = await get(p); ok(r.status === 200 && !/Algo salió mal/.test(r.text), 'Página ' + p, r.status);
   }
 
+  // ----- Requisitos nuevos: efectivo, últimos 4, zona horaria, remitentes por dominio, tarjeta en la bandeja, Excel
+  const run = (sql, ...a) => { const d = new DatabaseSync(DB); try { return d.prepare(sql).run(...a); } finally { d.close(); } };
+  await get('/bancos');
+  await post('/efectivo', {});
+  ok(one("SELECT COUNT(*) n FROM banks WHERE user_id = ? AND kind = 'efectivo'", U).n === 1, 'Efectivo no se duplica (RF-09)');
+  r = await get('/bancos'); ok(/Sin banco/.test(r.text) && /Billetera/.test(r.text), 'Efectivo aparece en Bancos sin banco');
+  ok(!/Agregar efectivo/.test(r.text), 'No ofrece agregar efectivo si ya existe');
+  await step('Agregar lugar de efectivo', `/bancos/${cashBank.id}/bolsillos`, { name: 'Caja en casa', purpose: '', initial_balance: '50.000' });
+  const caja = one("SELECT * FROM containers WHERE bank_id = ? AND name = 'Caja en casa'", cashBank.id);
+  ok(caja && caja.initial_balance === 5000000, 'Caja en casa con saldo inicial');
+  const b0 = bal(billetera.id);
+  await step('Retiro: de la cuenta al efectivo', '/transferencias', { container_from_id: cuenta.id, container_to_id: billetera.id, amount: '20.000', date: dates0(), description: 'Retiro cajero', back: '/bancos' });
+  ok(bal(billetera.id) === b0 + 2000000, 'El retiro suma a la billetera', bal(billetera.id) - b0);
+  r = await get(`/bancos/${cashBank.id}`); ok(/Total en efectivo/.test(r.text) && /Agregar lugar de efectivo/.test(r.text), 'Detalle de efectivo con su propio texto');
+  await step('Últimos 4 de la cuenta', `/bolsillos/${cuenta.id}/editar`, { name: 'Cuenta', purpose: '', initial_balance: String(cuenta.initial_balance / 100), last4: '**7890' });
+  ok(one('SELECT last4 FROM containers WHERE id = ?', cuenta.id).last4 === '7890', 'Guarda los últimos 4 de la cuenta (RC-21)');
+
+  const prof = one('SELECT * FROM users WHERE id = ?', U);
+  await post('/configuracion', { name: prof.name, currency: 'COP', timezone: 'Europe/Madrid', period_type: prof.period_type, quincena_dia1: '1', quincena_dia2: '16', alert_days_fixed: '3', alert_low_balance: '0' });
+  ok(one('SELECT timezone FROM users WHERE id = ?', U).timezone === 'Europe/Madrid', 'Zona horaria configurable (RN-06)');
+  await get('/configuracion');
+  await post('/configuracion', { name: prof.name, currency: 'COP', timezone: 'Marte/Olympus', period_type: prof.period_type, quincena_dia1: '1', quincena_dia2: '16', alert_days_fixed: '3', alert_low_balance: '0' });
+  ok(one('SELECT timezone FROM users WHERE id = ?', U).timezone === 'Europe/Madrid', 'Zona horaria inválida se ignora');
+  await get('/configuracion');
+  await post('/configuracion', { name: prof.name, currency: 'COP', timezone: 'America/Bogota', period_type: prof.period_type, quincena_dia1: '1', quincena_dia2: '16', alert_days_fixed: '3', alert_low_balance: '0' });
+
+  await get('/bandeja');
+  await step('Autorizar remitente por dominio (RC-17)', '/gmail/remitentes', { sender: 'notificacionesbancolombia.com', label: 'Alertas', bank_id: String(bank.id) });
+  ok(!!one("SELECT 1 FROM email_senders WHERE user_id = ? AND sender = 'notificacionesbancolombia.com'", U), 'Dominio guardado como remitente');
+  r = await post('/gmail/remitentes', { sender: 'esto no sirve' }); ok(/^error/.test(await flashOf(r.loc)), 'Remitente inválido se rechaza');
+  r = await post('/gmail/remitentes', { sender: 'notificacionesbancolombia.com' });
+  ok(one("SELECT COUNT(*) n FROM email_senders WHERE user_id = ? AND sender = 'notificacionesbancolombia.com'", U).n === 1, 'Remitente repetido no se duplica');
+  r = await get('/gmail/conectar'); ok(r.status === 302 && /bandeja/.test(r.loc || ''), 'Conectar Gmail exige consentimiento o configuración');
+
+  const pid = run(`INSERT INTO proposed_movements (user_id, status, kind, amount, date, description, card_id, reason)
+    VALUES (?, 'propuesto', 'gasto', 4500000, ?, 'Compra en TERPEL LAURELES', ?, 'Hora: 14:22 · Cuenta *4821')`, U, dates0(), card.id).lastInsertRowid;
+  r = await get('/bandeja'); ok(/Hora: 14:22/.test(r.text) && new RegExp('value="tarjeta:' + card.id + '" selected').test(r.text), 'La bandeja muestra la hora y propone la tarjeta');
+  await step('Aceptar compra con tarjeta desde la bandeja', `/bandeja/${pid}/aceptar`, { kind: 'gasto', amount: '45.000', date: dates0(), description: 'Compra en TERPEL LAURELES', category_id: '', container_from_id: 'tarjeta:' + card.id, container_to_id: '' });
+  const ptx = one("SELECT * FROM transactions WHERE user_id = ? AND description = 'Compra en TERPEL LAURELES'", U);
+  ok(ptx && ptx.card_id === card.id && ptx.container_from_id === null && ptx.amount === 4500000, 'La compra queda en la tarjeta, sin tocar cuentas', JSON.stringify(ptx));
+
+  { const rr = await fetch(BASE + '/exportar/todo.xlsx', { headers: { cookie } });
+    const buf = Buffer.from(await rr.arrayBuffer());
+    ok(rr.status === 200 && buf.subarray(0, 2).toString() === 'PK' && /spreadsheetml/.test(rr.headers.get('content-type') || ''), 'Exportar todo a Excel (RN-05)', rr.status);
+    ok(buf.includes('xl/worksheets/sheet10.xml') && !buf.includes('password_hash'), 'El Excel trae varias hojas y nada de contraseñas'); }
+
   // ----- Aislamiento entre personas
   cookie = '';
   await get('/registro');
-  await post('/registro', { name: 'Otra', email: 'otra@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual' });
+  await post('/registro', { name: 'Otra', email: 'otra@erijuli.co', password: 'secreto123', currency: 'COP', period_type: 'mensual', acepto_privacidad: '1' });
   r = await get(`/bancos/${bank.id}`); ok(r.status !== 200 || !r.text.includes('Fondo de emergencia'), 'Otra persona no ve bancos ajenos', r.status);
   r = await get(`/movimientos/${g.id}/editar`); ok(r.status !== 200 || !r.text.includes('Gasolina'), 'Otra persona no abre movimientos ajenos', r.status);
   await post(`/movimientos/${g.id}/eliminar`, {}); ok(!!one('SELECT 1 FROM transactions WHERE id = ?', g.id), 'Otra persona no borra movimientos ajenos');
   await post(`/bolsillos/${moto.id}/editar`, { name: 'Hackeado', initial_balance: '0' }); ok(one('SELECT name FROM containers WHERE id = ?', moto.id).name === 'Moto', 'Otra persona no edita bolsillos ajenos');
+  r = await get('/exportar/respaldo.db'); ok(r.status === 302, 'Con varias personas, el respaldo .db no se entrega a cualquiera', r.status);
+  { const rr = await fetch(BASE + '/exportar/todo.xlsx', { headers: { cookie } }); const buf = Buffer.from(await rr.arrayBuffer());
+    ok(!buf.includes('Gasolina') && !buf.includes('Bancolombia'), 'El Excel de otra persona no trae datos ajenos'); }
+
+  // ----- Eliminar cuenta (RN-05)
+  const U3 = one("SELECT id FROM users WHERE email = 'otra@erijuli.co'").id;
+  await get('/configuracion');
+  r = await post('/cuenta/eliminar', { password: 'malaclave', confirmacion: 'ELIMINAR' });
+  ok(!!one('SELECT 1 FROM users WHERE id = ?', U3), 'Eliminar cuenta con clave errada no borra nada');
+  await get('/configuracion');
+  r = await post('/cuenta/eliminar', { password: 'secreto123', confirmacion: 'borrar' });
+  ok(!!one('SELECT 1 FROM users WHERE id = ?', U3), 'Eliminar cuenta exige escribir ELIMINAR');
+  await get('/configuracion');
+  r = await post('/cuenta/eliminar', { password: 'secreto123', confirmacion: 'ELIMINAR' });
+  ok(r.status === 302 && /login/.test(r.loc || ''), 'Eliminar cuenta redirige al inicio de sesión', r.loc);
+  ok(!one('SELECT 1 FROM users WHERE id = ?', U3) && !one('SELECT 1 FROM banks WHERE user_id = ?', U3) && !one('SELECT 1 FROM categories WHERE user_id = ?', U3), 'La cuenta y todos sus datos se borran');
+  r = await get('/'); ok(r.status === 302 && /login/.test(r.loc || ''), 'La sesión de la cuenta eliminada se cierra');
+  ok(!!one("SELECT 1 FROM users WHERE email = 'qa@erijuli.co'") && !!one('SELECT 1 FROM transactions WHERE id = ?', g.id), 'Las demás cuentas siguen intactas');
 } catch (e) {
   ok(false, 'La prueba se detuvo', e.stack);
 } finally {

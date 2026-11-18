@@ -190,6 +190,27 @@ async function fetchBankEmails(userId, { days = 30, max = 50 } = {}) {
 }
 
 /**
+ * Busca la cuenta o tarjeta del correo: primero por los últimos 4 dígitos (RC-21),
+ * luego por el banco asociado al remitente (RC-06). También ubica el efectivo para los retiros.
+ */
+function matchAccount(userId, parsed, from) {
+  const out = {};
+  if (parsed.last4) {
+    out.card = db.prepare(`SELECT * FROM credit_cards WHERE user_id = ? AND last4 = ? AND archived = 0`).get(userId, parsed.last4) || null;
+    if (!out.card) out.container = db.prepare(`SELECT * FROM containers WHERE user_id = ? AND last4 = ? AND archived = 0`).get(userId, parsed.last4) || null;
+    out.byLast4 = Boolean(out.card || out.container);
+  }
+  if (!out.card && !out.container) {
+    const sender = db.prepare(`SELECT * FROM email_senders WHERE user_id = ? AND active = 1 AND bank_id IS NOT NULL AND instr(lower(?), lower(replace(sender, '@', ''))) > 0`)
+      .get(userId, String(from || '').replace(/@/g, '')) || null;
+    if (sender) out.container = db.prepare(`SELECT * FROM containers WHERE user_id = ? AND bank_id = ? AND kind = 'cuenta' AND archived = 0`).get(userId, sender.bank_id) || null;
+  }
+  out.cash = db.prepare(`SELECT c.* FROM containers c JOIN banks b ON b.id = c.bank_id
+    WHERE c.user_id = ? AND b.kind = 'efectivo' AND c.archived = 0 ORDER BY c.kind DESC, c.id LIMIT 1`).get(userId) || null;
+  return out;
+}
+
+/**
  * Sincroniza el buzón: convierte correos en movimientos propuestos (RC-07).
  * Aplica reglas aprendidas (RC-09) y evita duplicados (RC-10).
  */
@@ -221,23 +242,38 @@ async function syncUser(userId, opts = {}) {
     if (parsed) {
       rule = db.prepare(`SELECT * FROM email_rules WHERE user_id = ? AND ? LIKE '%' || merchant_pattern || '%'`).get(userId, parsed.description) || null;
     }
+    const m = parsed ? matchAccount(userId, parsed, msg.from) : {};
+    let kind = parsed ? parsed.kind : 'gasto';
+    let fromId = (rule && rule.container_from_id) || null;
+    let toId = (rule && rule.container_to_id) || null;
+    let cardId = null;
+    // RC-06 / RC-21: los últimos 4 dígitos (o el banco del remitente) dicen de qué cuenta o tarjeta es
+    if (m.card) { cardId = m.card.id; fromId = null; }
+    else if (m.container) { if (kind === 'ingreso') toId = m.container.id; else fromId = m.container.id; }
+    // Retiro en cajero: es un movimiento de la cuenta al efectivo, no un gasto
+    if (parsed && parsed.cash && m.cash && !cardId) { kind = 'transferencia'; toId = m.cash.id; }
+    if (kind === 'ingreso') fromId = null;
+    if (kind === 'gasto') toId = null;
+
+    const notes = [];
+    if (parsed && parsed.time) notes.push(`Hora: ${parsed.time}`);
+    if (parsed && parsed.last4) notes.push(`Cuenta *${parsed.last4}${m.byLast4 ? '' : ' (no la reconocí: agrégale los 4 dígitos a tu cuenta o tarjeta)'}`);
+    if (parsed && parsed.noCategory && !(rule && rule.category_id)) notes.push('Pago por QR sin comercio: elige la categoría.');
 
     const status = parsed ? 'propuesto' : 'sin_procesar';
     const info = db.prepare(`INSERT INTO proposed_movements
-      (user_id, status, kind, amount, date, description, category_id, income_source_id, container_from_id, container_to_id,
+      (user_id, status, kind, amount, date, description, category_id, income_source_id, container_from_id, container_to_id, card_id,
        email_sender, email_subject, email_date, email_link, reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(userId, status,
-        parsed ? parsed.kind : 'gasto',
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(userId, status, kind,
         parsed ? parsed.amount : 0,
         (parsed && parsed.date) || todayISO(),
         parsed ? parsed.description : (msg.subject || 'Correo sin interpretar'),
         rule ? rule.category_id : null,
         rule ? rule.income_source_id : null,
-        rule ? rule.container_from_id : null,
-        rule ? rule.container_to_id : null,
+        fromId, toId, cardId,
         msg.from, msg.subject, msg.date, emailLink,
-        parsed ? '' : 'No se pudo interpretar este correo: regístralo a mano.');
+        parsed ? notes.join(' · ') : 'No se pudo interpretar este correo: regístralo a mano.');
 
     db.prepare('INSERT OR IGNORE INTO processed_emails (user_id, message_id, proposed_id) VALUES (?, ?, ?)').run(userId, msg.id, info.lastInsertRowid);
     if (parsed) result.propuestos++; else result.sinProcesar++;
@@ -247,5 +283,5 @@ async function syncUser(userId, opts = {}) {
 
 module.exports = {
   gmailStatus, authUrl, exchangeCode, getAccessToken, revoke, syncUser,
-  getConnection, saveConnection, deleteConnection, listSenders, SCOPES, redirectUri,
+  getConnection, saveConnection, deleteConnection, listSenders, SCOPES, redirectUri, matchAccount,
 };

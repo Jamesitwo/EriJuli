@@ -1,25 +1,25 @@
 <% const currency = user.currency; %>
 <div class="hero hero-sm">
-  <div class="hero-label">Total general (cuenta + bolsillos)</div>
+  <div class="hero-label">Total general (cuentas, bolsillos y efectivo)</div>
   <div class="hero-amount"><%= formatMoney(total, currency) %></div>
 </div>
 
 <% banks.forEach(function (b) { %>
   <section class="card">
     <div class="card-head">
-      <h2><span class="dot" style="background:<%= b.color %>"></span> <%= b.name %></h2>
+      <h2><% if (b.kind === 'efectivo') { %><svg class="ic ic-sm cash-ic"><use href="#i-cash"/></svg><% } else { %><span class="dot" style="background:<%= b.color %>"></span><% } %> <%= b.name %><% if (b.kind === 'efectivo') { %> <span class="badge badge-success">Sin banco</span><% } %></h2>
       <strong><%= formatMoney(b.total, currency) %></strong>
     </div>
     <div class="stack">
       <% b.containers.forEach(function (c) { %>
         <div class="bank-row">
           <span class="tx-icon <%= c.kind === 'cuenta' ? '' : 'pocket' %>"><%= c.kind === 'cuenta' ? '' : '' %></span>
-          <span class="bank-name"><%= c.name %><small class="muted"><%= c.purpose || (c.kind === 'cuenta' ? 'Dinero sin propósito' : 'Bolsillo') %></small></span>
+          <span class="bank-name"><%= c.name %><small class="muted"><%= c.purpose || (b.kind === 'efectivo' ? 'Efectivo' : c.kind === 'cuenta' ? 'Dinero sin propósito' : 'Bolsillo') %><%= c.last4 ? ' · *' + c.last4 : '' %></small></span>
           <strong><%= formatMoney(c.balance, currency) %></strong>
         </div>
       <% }) %>
     </div>
-    <a class="btn btn-ghost btn-block mt-1" href="/bancos/<%= b.id %>">Administrar <%= b.name %></a>
+    <a class="btn btn-ghost btn-block mt-1" href="/bancos/<%= b.id %>"><%= b.kind === 'efectivo' ? 'Administrar efectivo' : 'Administrar ' + b.name %></a>
   </section>
 <% }) %>
 
@@ -39,8 +39,19 @@
       <button class="btn btn-primary" type="submit">Agregar</button>
     </div>
   </form>
-  <p class="muted">También puedes registrar <strong>Efectivo</strong> como un banco aparte. Las tarjetas de crédito tienen su propia sección: <a href="/tarjetas">Tarjetas</a>.</p>
+  <p class="muted">Las tarjetas de crédito tienen su propia sección y se muestran como deuda: <a href="/tarjetas">Tarjetas</a>.</p>
 </section>
+
+<% if (!hasCash) { %>
+<section class="card">
+  <h2><svg class="ic ic-sm cash-ic"><use href="#i-cash"/></svg> Efectivo</h2>
+  <p class="muted">Lleva la cuenta de los billetes que tienes en la mano o guardados en casa, sin que pertenezcan a ningún banco. Suma al total general y puedes mover dinero entre el efectivo y tus cuentas (retiros y consignaciones).</p>
+  <form method="post" action="/efectivo">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn btn-primary btn-block" type="submit">Agregar efectivo</button>
+  </form>
+</section>
+<% } %>
 
 <section class="card">
   <h2>Mover dinero</h2>

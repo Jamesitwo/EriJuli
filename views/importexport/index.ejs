@@ -44,12 +44,14 @@
 
 <section class="card">
   <h2>Exportar datos</h2>
-  <p class="muted">Descarga todo lo que tienes en la app cuando quieras (tus datos son tuyos).</p>
+  <p class="muted">Descarga todo lo que tienes en la app cuando quieras: tus datos son tuyos.</p>
   <div class="stack">
+    <a class="btn btn-primary btn-block" href="/exportar/todo.xlsx" download>Todos mis datos en Excel (.xlsx)</a>
+    <small class="muted">Un libro con una hoja por tema: movimientos, bancos, bolsillos y efectivo, tarjetas, categorías, gastos fijos, metas, préstamos, bandeja de correo, hogar e historial de cambios. Nunca incluye contraseñas ni permisos.</small>
     <a class="btn btn-ghost btn-block" href="/exportar/movimientos.csv">Movimientos (CSV)</a>
     <a class="btn btn-ghost btn-block" href="/exportar/bolsillos.csv">Bancos y bolsillos (CSV)</a>
-    <a class="btn btn-primary btn-block" href="/exportar/respaldo.db">Respaldo completo de la cuenta (base de datos)</a>
+    <% if (isAdmin) { %><a class="btn btn-ghost btn-block" href="/exportar/respaldo.db">Respaldo completo del servidor (base de datos)</a><% } %>
     <a class="btn btn-ghost btn-block" href="/reportes">Ver reportes</a>
   </div>
-  <p class="muted mt-1">Además, la app genera un respaldo automático cada día y conserva los últimos 7.</p>
+  <p class="muted mt-1">Además, la app genera un respaldo automático cada día y conserva los últimos 7. Si quieres borrar tu cuenta, ve a <a href="/configuracion#eliminar-cuenta">Configuración</a>.</p>
 </section>

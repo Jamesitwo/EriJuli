@@ -20,6 +20,15 @@
         <option value="MXN" <%= user.currency === 'MXN' ? 'selected' : '' %>>Pesos mexicanos (MX$)</option>
       </select>
     </div>
+    <div class="field">
+      <label for="s-tz">Zona horaria</label>
+      <% const zonas = [['America/Bogota','Colombia (Bogotá)'],['America/Lima','Perú (Lima)'],['America/Guayaquil','Ecuador (Guayaquil)'],['America/Panama','Panamá'],['America/Mexico_City','México (Ciudad de México)'],['America/Caracas','Venezuela (Caracas)'],['America/Santiago','Chile (Santiago)'],['America/Argentina/Buenos_Aires','Argentina (Buenos Aires)'],['America/New_York','EE. UU. (Nueva York)'],['America/Los_Angeles','EE. UU. (Los Ángeles)'],['Europe/Madrid','España (Madrid)']]; const tz = user.timezone || 'America/Bogota'; %>
+      <select id="s-tz" name="timezone">
+        <% zonas.forEach(function (z) { %><option value="<%= z[0] %>" <%= tz === z[0] ? 'selected' : '' %>><%= z[1] %></option><% }) %>
+        <% if (!zonas.some(function (z) { return z[0] === tz; })) { %><option value="<%= tz %>" selected><%= tz %></option><% } %>
+      </select>
+      <small class="muted">Define qué es "hoy" para tus movimientos, periodos y alertas.</small>
+    </div>
   </section>
 
   <a class="alert alert-info" href="/seguridad"><span>Contraseña, códigos de recuperación, bloqueo con PIN o huella y notificaciones están en <strong>Seguridad</strong>.</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
@@ -133,6 +142,32 @@
       <div class="filter-actions">
         <button class="btn btn-primary" type="submit">Crear</button>
       </div>
+    </form>
+  </details>
+</section>
+
+<section class="card">
+  <h2>Tus datos y privacidad</h2>
+  <p class="muted">Cómo se guardan y usan tus datos: <a href="/privacidad">política de privacidad</a><% if (user.privacy_accepted_at) { %> (aceptada el <%= dates.formatDate(String(user.privacy_accepted_at).slice(0, 10)) %>)<% } %>.</p>
+  <a class="btn btn-ghost btn-block" href="/exportar/todo.xlsx" download>Descargar todos mis datos (Excel)</a>
+</section>
+
+<section class="card danger-zone" id="eliminar-cuenta">
+  <h2>Eliminar mi cuenta</h2>
+  <p class="muted">Se borra <strong>todo</strong> de inmediato: movimientos, bancos, bolsillos, efectivo, tarjetas, metas, préstamos, fotos de recibos, la conexión con Gmail, tus huellas y las sesiones abiertas en otros dispositivos. No se puede deshacer. Te recomendamos descargar tus datos primero.</p>
+  <details>
+    <summary class="link">Quiero eliminar mi cuenta</summary>
+    <form method="post" action="/cuenta/eliminar" class="stack mt-1" onsubmit="return confirm('Esto borra tu cuenta y todos tus datos para siempre. ¿Continuar?');">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="del-pass">Tu contraseña</label>
+        <input id="del-pass" type="password" name="password" required autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label for="del-confirm">Escribe ELIMINAR para confirmar</label>
+        <input id="del-confirm" name="confirmacion" required autocomplete="off" autocapitalize="characters" placeholder="ELIMINAR">
+      </div>
+      <button class="btn btn-danger btn-block" type="submit">Eliminar mi cuenta y todos mis datos</button>
     </form>
   </details>
 </section>

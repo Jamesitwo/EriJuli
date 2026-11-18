@@ -2,9 +2,23 @@
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
+const { AsyncLocalStorage } = require('node:async_hooks');
+const DEFAULT_TZ = 'America/Bogota';
+// Zona horaria de la persona que hace la petición (RN-06). La fija requireAuth.
+const tzStore = new AsyncLocalStorage();
+
+function validTimeZone(tz) {
+  try { new Intl.DateTimeFormat('en-CA', { timeZone: tz }); return true; } catch { return false; }
+}
+
+function currentTimeZone() {
+  const tz = tzStore.getStore();
+  return tz && validTimeZone(tz) ? tz : DEFAULT_TZ;
+}
+
 function todayISO() {
-  // Zona horaria de Bogotá por defecto para "hoy"
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  // "Hoy" según la zona horaria del usuario (Bogotá por defecto)
+  return new Date().toLocaleDateString('en-CA', { timeZone: currentTimeZone() });
 }
 
 function parseISO(iso) {
@@ -87,4 +101,5 @@ function periodMatches(period, iso) {
   return iso >= period.start_date && iso <= period.end_date;
 }
 
-module.exports = { todayISO, parseISO, toISO, addDays, formatDate, periodFor, currentPeriodRange, nextPeriodRange, periodMatches, monthLabel, MESES };
+module.exports = {
+  tzStore, currentTimeZone, validTimeZone, DEFAULT_TZ, todayISO, parseISO, toISO, addDays, formatDate, periodFor, currentPeriodRange, nextPeriodRange, periodMatches, monthLabel, MESES };

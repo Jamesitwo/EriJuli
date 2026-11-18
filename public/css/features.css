@@ -174,3 +174,14 @@ select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Campos llenados por el escaneo: un brillo suave para que se vea qué cambió */
 .is-suggested { animation: ej-suggested 2.2s var(--ease-out, ease) both; }
 @keyframes ej-suggested { 0%, 35% { box-shadow: 0 0 0 3px var(--maiz); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* ---------- Efectivo, privacidad y cuenta ---------- */
+.cash-ic { color: var(--monte); vertical-align: -3px; }
+.legal h2 { margin-top: 1.4rem; }
+.legal ul { padding-left: 1.2rem; display: grid; gap: .45rem; }
+.legal li, .legal p { line-height: 1.55; }
+.legal code { font-size: .85em; background: var(--surface-2, rgba(0,0,0,.05)); padding: .05rem .35rem; border-radius: 6px; }
+.danger-zone { border: 1px solid var(--alerta); }
+.danger-zone h2 { color: var(--alerta); }
+.consent-note { font-size: .9rem; }
+.consent-note ul { padding-left: 1.1rem; margin: .4rem 0; display: grid; gap: .25rem; }

@@ -5,6 +5,7 @@ const { db } = require('../db');
 const { setFlash } = require('../middleware');
 const { ensurePeriod } = require('../services/periods');
 const { log } = require('../services/audit');
+const { ensureCash } = require('../services/balances');
 
 const router = express.Router();
 
@@ -20,14 +21,18 @@ router.post('/registro', (req, res) => {
     setFlash(req, 'error', 'Necesitas un correo y una contraseña de al menos 8 caracteres.');
     return res.redirect('/registro');
   }
+  if (!req.body.acepto_privacidad) {
+    setFlash(req, 'error', 'Para crear la cuenta debes aceptar la política de privacidad.');
+    return res.redirect('/registro');
+  }
   const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (exists) {
     setFlash(req, 'error', 'Ya existe una cuenta con ese correo.');
     return res.redirect('/registro');
   }
   const hash = bcrypt.hashSync(String(password), 10);
-  const info = db.prepare(`INSERT INTO users (email, password_hash, name, currency, period_type)
-    VALUES (?, ?, ?, ?, ?)`)
+  const info = db.prepare(`INSERT INTO users (email, password_hash, name, currency, period_type, privacy_accepted_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'))`)
     .run(cleanEmail, hash, String(name || '').trim(), currency === 'USD' ? 'USD' : 'COP', period_type === 'quincenal' ? 'quincenal' : 'mensual');
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
 
@@ -42,6 +47,7 @@ router.post('/registro', (req, res) => {
   for (const [n, k, c] of cats) insCat.run(user.id, n, k, c);
   const bank = db.prepare('INSERT INTO banks (user_id, name, color) VALUES (?, ?, ?)').run(user.id, 'Banco principal', '#0f5c45');
   db.prepare(`INSERT INTO containers (user_id, bank_id, kind, name, purpose) VALUES (?, ?, 'cuenta', 'Cuenta', '')`).run(user.id, bank.lastInsertRowid);
+  ensureCash(user.id); // Efectivo propio, sin banco (RF-09)
 
   req.session.userId = user.id;
   req.session.lastSeen = Date.now();
@@ -49,6 +55,13 @@ router.post('/registro', (req, res) => {
   log(user.id, 'user', user.id, 'registro', 'Cuenta creada');
   setFlash(req, 'success', `¡Bienvenido${user.name ? ' ' + user.name : ''}! Configura tus bancos y bolsillos para empezar.`);
   res.redirect('/');
+});
+
+// Política de privacidad (RN-04): pública, se ve con o sin sesión
+router.get('/privacidad', (req, res) => {
+  const user = req.session.userId ? db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId) : null;
+  if (user && !req.session.locked) { res.locals.user = user; res.locals.currentPath = '/privacidad'; }
+  res.render('legal/privacy', { title: 'Política de privacidad' });
 });
 
 router.get('/login', (req, res) => {

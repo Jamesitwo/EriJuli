@@ -30,7 +30,17 @@
     <!-- Remitentes autorizados -->
     <details class="mt-1">
       <summary class="link">Remitentes autorizados (<%= senders.length %>)</summary>
-      <p class="muted mt-1">La app SOLO lee correos de los remitentes que autorizas aquí (ej. los avisos de tu banco).</p>
+      <p class="muted mt-1">La app SOLO lee correos de los remitentes que autorizas aquí (ej. los avisos de tu banco). Puedes poner un correo exacto o un dominio completo: Bancolombia envía desde varias direcciones (<code>an.</code>, <code>ayn.</code>), así que es mejor autorizar <code>notificacionesbancolombia.com</code>.</p>
+      <% if (!senders.some(function (s) { return /notificacionesbancolombia/.test(s.sender); })) { %>
+      <form method="post" action="/gmail/remitentes" class="mt-1">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="sender" value="notificacionesbancolombia.com">
+        <input type="hidden" name="label" value="Alertas Bancolombia">
+        <% const bcol = banks.find(function (b) { return /bancolombia/i.test(b.name); }); %>
+        <% if (bcol) { %><input type="hidden" name="bank_id" value="<%= bcol.id %>"><% } %>
+        <button class="btn btn-ghost btn-sm" type="submit"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Autorizar alertas de Bancolombia</button>
+      </form>
+      <% } %>
       <div class="stack mt-1">
         <% senders.forEach(function (s) { %>
           <div class="flex-between">
@@ -45,8 +55,8 @@
       <form method="post" action="/gmail/remitentes" class="filter-grid mt-1">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="field">
-          <label for="sender">Correo del remitente</label>
-          <input id="sender" name="sender" type="email" required placeholder="alertas@bancolombia.com">
+          <label for="sender">Correo o dominio del remitente</label>
+          <input id="sender" name="sender" type="text" inputmode="email" autocapitalize="off" spellcheck="false" required placeholder="notificacionesbancolombia.com">
         </div>
         <div class="field">
           <label for="sender-label">Descripción</label>
@@ -81,9 +91,20 @@
       </form>
     </details>
   <% } else { %>
-    <div class="stack mt-1">
-      <a class="btn btn-primary btn-block" href="/gmail/conectar">Conectar Gmail (solo lectura)</a>
-    </div>
+    <form method="get" action="/gmail/conectar" class="stack mt-1 consent-note">
+      <p class="muted">Antes de conectar, ten presente:</p>
+      <ul class="muted">
+        <li>Solo se pide permiso de <strong>lectura</strong>; la app no envía, borra ni cambia correos.</li>
+        <li>Solo se leen los remitentes que autorices (las alertas de tu banco).</li>
+        <li>Los datos no se venden, no se comparten y no se usan para publicidad.</li>
+        <li>Puedes desconectar y borrar lo importado cuando quieras.</li>
+      </ul>
+      <label class="check">
+        <input type="checkbox" name="acepto" value="1" required>
+        <span>Autorizo leer los correos de mi banco según la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</span>
+      </label>
+      <button class="btn btn-primary btn-block" type="submit">Conectar Gmail (solo lectura)</button>
+    </form>
     <details class="mt-1">
       <summary class="link">¿Cómo funciona y qué datos se usan?</summary>
       <ol class="mt-1 muted">
@@ -120,6 +141,7 @@
       <% if (p.email_subject) { %> · "<%= p.email_subject %>"<% } %>
       <% if (p.status === 'sin_procesar') { %> · <span class="badge badge-warning">sin procesar</span><% } %>
     </p>
+    <% if (p.reason) { %><p class="muted"><small><%= p.reason %></small></p><% } %>
     <form method="post" action="/bandeja/<%= p.id %>/aceptar" class="stack">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field-row">
@@ -154,8 +176,13 @@
         <select name="container_from_id">
           <option value="">Elegir…</option>
           <% containers.forEach(function (c) { %>
-            <option value="<%= c.id %>" <%= p.container_from_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+            <option value="<%= c.id %>" <%= p.container_from_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %><%= c.last4 ? ' *' + c.last4 : '' %></option>
           <% }) %>
+          <% if (cards.length) { %><optgroup label="Tarjetas de crédito">
+            <% cards.forEach(function (k) { %>
+              <option value="tarjeta:<%= k.id %>" <%= p.card_id === k.id ? 'selected' : '' %>><%= k.name %><%= k.last4 ? ' *' + k.last4 : '' %></option>
+            <% }) %>
+          </optgroup><% } %>
         </select>
       </div>
       <div class="field">
@@ -163,7 +190,7 @@
         <select name="container_to_id">
           <option value="">Elegir…</option>
           <% containers.forEach(function (c) { %>
-            <option value="<%= c.id %>" <%= p.container_to_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+            <option value="<%= c.id %>" <%= p.container_to_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %><%= c.last4 ? ' *' + c.last4 : '' %></option>
           <% }) %>
         </select>
       </div>

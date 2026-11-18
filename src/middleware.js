@@ -1,4 +1,5 @@
 'use strict';
+const { tzStore } = require('./utils/dates');
 const crypto = require('crypto');
 const { db } = require('./db');
 
@@ -15,6 +16,8 @@ function requireAuth(req, res, next) {
   req.user = user;
   res.locals.user = user;
   res.locals.currentPath = req.path;
+  // A partir de aquí, "hoy" se calcula en la zona horaria del usuario (RN-06)
+  tzStore.enterWith(user.timezone || 'America/Bogota');
 
   // Bloqueo con PIN o huella después de un rato sin usar la app
   const now = Date.now();

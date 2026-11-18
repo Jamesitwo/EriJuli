@@ -17,6 +17,13 @@ function migrate(db) {
   addColumn(db, 'users', 'lock_minutes', 'INTEGER NOT NULL DEFAULT 5');
   addColumn(db, 'users', 'notify_push', 'INTEGER NOT NULL DEFAULT 1');
   addColumn(db, 'users', 'motion', "TEXT NOT NULL DEFAULT 'auto'"); // animaciones: auto | si | no
+  addColumn(db, 'users', 'privacy_accepted_at', 'TEXT'); // RN-04: aceptación de la política de privacidad
+
+  // --- Efectivo como lugar propio, sin banco (RF-09)
+  addColumn(db, 'banks', 'kind', "TEXT NOT NULL DEFAULT 'banco'"); // banco | efectivo
+  db.exec(`UPDATE banks SET kind = 'efectivo' WHERE kind = 'banco' AND lower(trim(name)) IN ('efectivo', 'billetera')`);
+  // Últimos 4 dígitos de la cuenta, para reconocerla en los correos del banco (RC-06, RC-21)
+  addColumn(db, 'containers', 'last4', "TEXT NOT NULL DEFAULT ''");
 
   // --- Recuperar contraseña
   db.exec(`CREATE TABLE IF NOT EXISTS password_resets (

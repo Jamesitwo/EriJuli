@@ -68,68 +68,106 @@ function extractMerchant(text) {
 }
 
 // ---------- plantillas por banco ----------
+const { findAmount, findDate } = require('./receiptParser');
+const { currentTimeZone } = require('../utils/dates');
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// RC-18: el verbo de la frase dice si entró o salió dinero
+const INCOME_VERBS = /recibiste|te\s+(?:envio|enviaron|consigno|consignaron|transfirio|transfirieron|abonaron)|abono\s+(?:a|en)\s+tu|consignacion|transferencia\s+recibida|deposito|reembolso|reintegro|devolucion/;
+const EXPENSE_VERBS = /pagaste|compraste|\bcompra\b|\bpago\b|retiraste|\bretiro\b|transferiste|enviaste|transferencia\s+(?:enviada|realizada)|debito|\bcargo\b|cuota\s+de\s+manejo|avance|descuento\s+de/;
+
+/** RC-21: últimos 4 dígitos con uno o dos asteriscos delante (o "terminada en"). */
+function last4Of(text) {
+  const m = /\*{1,2}\s?(\d{4})\b/.exec(text) || /(?:terminad[ao]|termina|finalizad[ao])\s+en\s+(\d{4})\b/i.exec(text) || /(?:cuenta|tarjeta|producto)\s+(?:no\.?\s*)?x+(\d{4})\b/i.exec(text);
+  return m ? m[1] : '';
+}
+
+/** Contraparte: quién envió (ingresos) o dónde se pagó (gastos). */
+function counterpartOf(text, kind) {
+  const clean = (v) => v.replace(/\s+/g, ' ').trim().replace(/[.,;:]+$/, '');
+  if (kind === 'ingreso') {
+    const m = /\b(?:de|desde)\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ.&' -]{2,60}?)\s+(?:en|a|el|por|con|desde|,|\.|$)/.exec(text);
+    if (m && !/^(tu|su|la|el|una|un|cuenta|bancolombia)\b/i.test(m[1])) return clean(m[1]);
+    return '';
+  }
+  const m = /\b(?:en|a)\s+([A-Z0-9][A-Z0-9ÁÉÍÓÚÑ .&'*-]{2,50}?)(?:\s+(?:desde|con|el|por|en\s+tu|\d{1,2}:\d{2}|\d{1,2}\/\d{1,2})|[,.](?:\s|$)|\s*$)/.exec(text);
+  if (m && !/^(la llave|tu|su|la|el)\b/i.test(m[1])) return clean(m[1]);
+  return '';
+}
+
+function classify(text) {
+  const t = norm(text);
+  const income = INCOME_VERBS.test(t), expense = EXPENSE_VERBS.test(t);
+  // "Recibiste" gana si aparece al comienzo de la frase; si no, cuenta el primero que aparezca
+  let kind = null;
+  if (income && !expense) kind = 'ingreso';
+  else if (expense && !income) kind = 'gasto';
+  else if (income && expense) kind = t.search(INCOME_VERBS) < t.search(EXPENSE_VERBS) ? 'ingreso' : 'gasto';
+  if (!kind) return null;
+
+  // RC-22: pago por QR a una llave → sin comercio ni categoría
+  const llave = /\bllave\s+([0-9A-Za-z@._-]{4,})/.exec(text);
+  if (kind === 'gasto' && llave) {
+    const k = llave[1];
+    return { kind, description: `Pago QR a llave …${k.slice(-4)}`, noCategory: true };
+  }
+  const who = counterpartOf(text, kind);
+  if (kind === 'ingreso') return { kind, description: who ? `Transferencia de ${who}` : 'Ingreso' };
+  if (/cuota\s+de\s+manejo/.test(t)) return { kind, description: 'Cuota de manejo' };
+  if (/retir/.test(t)) return { kind, description: 'Retiro en cajero', cash: true };
+  if (/transferiste|enviaste|transferencia\s+(?:enviada|realizada)/.test(t)) return { kind, description: who ? `Transferencia a ${who}` : 'Transferencia enviada' };
+  const verb = /compra|compraste/.test(t) ? 'Compra' : 'Pago';
+  return { kind, description: who ? `${verb} en ${who}` : verb };
+}
+
 const BANK_PATTERNS = [
   {
     id: 'bancolombia',
     name: 'Bancolombia',
-    senderPattern: /bancolombia|alertasbancolombia|notificacionesbancolombia/i,
-    // Devuelve {kind, description} si el correo es un movimiento, o null
-    classify(text) {
-      const t = text.toLowerCase();
-      if (/(compra|pago|retiro|débito|debito|cargo|descuento|transferencia (?:enviada|realizada)|extracto débito)/.test(t)) {
-        const merchant = extractMerchant(text);
-        return { kind: 'gasto', description: merchant ? `Compra ${merchant}` : 'Movimiento Bancolombia' };
-      }
-      if (/(transferencia recibida|abono|consignación|consignacion|depósito|deposito|crédito|credito|reembolso|reintegro)/.test(t)) {
-        const merchant = extractMerchant(text);
-        return { kind: 'ingreso', description: merchant ? `Ingreso de ${merchant}` : 'Ingreso Bancolombia' };
-      }
-      return null;
-    },
+    // RC-17: el remitente cambia de subdominio (an., ayn.), por eso se reconoce el dominio
+    senderPattern: /notificacionesbancolombia\.com|bancolombia/i,
+    classify,
   },
 ];
 
-function genericClassify(text) {
-  const t = text.toLowerCase();
-  if (/(compra|pago|retiro|débito|debito|cargo)/.test(t)) {
-    const merchant = extractMerchant(text);
-    return { kind: 'gasto', description: merchant ? `Compra ${merchant}` : 'Movimiento detectado' };
-  }
-  if (/(transferencia recibida|abono|consignación|consignacion|depósito|deposito|reembolso)/.test(t)) {
-    return { kind: 'ingreso', description: 'Ingreso detectado' };
-  }
-  return null;
-}
-
 /**
  * Interpreta un correo y devuelve un movimiento propuesto o null.
+ * Solo se usan el asunto y el extracto: la publicidad y los consejos del resto del correo se ignoran.
  * @param {Object} email {from, subject, snippet, date}
  */
 function parseBankEmail(email, knownSenders = []) {
-  const text = `${email.subject || ''} ${email.snippet || ''}`.trim();
-  if (!text) return null;
+  const text = `${email.subject || ''}. ${email.snippet || ''}`.replace(/\s+/g, ' ').trim();
+  if (text.length < 5) return null;
+  const from = String(email.from || '').toLowerCase();
 
-  // Busca la plantilla del banco por el remitente (o por remitentes autorizados)
-  let template = BANK_PATTERNS.find((t) => t.senderPattern.test(email.from || ''));
+  let template = BANK_PATTERNS.find((t) => t.senderPattern.test(from));
   if (!template && knownSenders.length) {
-    const sender = knownSenders.find((s) => (email.from || '').toLowerCase().includes(s.toLowerCase()));
-    if (!sender) return null; // RC-02: solo remitentes autorizados
-    template = BANK_PATTERNS[0]; // plantilla por defecto para bancos sin plantilla propia
+    const ok = knownSenders.some((s) => from.includes(String(s).toLowerCase().replace(/^@/, '')));
+    if (!ok) return null; // RC-02: solo remitentes autorizados
   }
-  const result = template ? template.classify(text) : genericClassify(text);
+  const result = (template ? template.classify : classify)(text);
   if (!result) return null;
 
-  const amount = extractAmount(text);
-  if (amount <= 0) return null;
+  // RC-19: "$100,000" y "$6,500.00" (coma de miles) y también "$100.000" o "$6.500,00"
+  const amount = findAmount([text]);
+  if (!amount || amount <= 0) return null;
+
+  // RC-20: día/mes/año y hora de 24 horas
+  const date = findDate(text, new Date().toLocaleDateString('en-CA', { timeZone: currentTimeZone() }))
+    || extractDate(text) || (email.date ? new Date(email.date).toLocaleDateString('en-CA', { timeZone: currentTimeZone() }) : null);
+  const time = (/\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(text) || [])[0] || '';
 
   return {
     kind: result.kind,
     description: result.description,
+    noCategory: Boolean(result.noCategory),
+    cash: Boolean(result.cash),
     amount,
-    date: extractDate(text) || (email.date ? email.date.slice(0, 10) : null),
-    last4: extractLast4(text),
+    date,
+    time,
+    last4: last4Of(text) || extractLast4(text),
     bank: template ? template.name : '',
   };
 }
 
-module.exports = { parseBankEmail, BANK_PATTERNS, extractAmount, extractDate, extractMerchant, extractLast4 };
+module.exports = { parseBankEmail, BANK_PATTERNS, extractAmount, extractDate, extractMerchant, extractLast4, last4Of, classify };

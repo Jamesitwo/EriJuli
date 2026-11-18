@@ -1,0 +1,42 @@
+<article class="card legal">
+  <h1>Política de privacidad</h1>
+  <p class="muted">Última actualización: 18 de noviembre de 2026</p>
+
+  <p>EriJuli es una aplicación de finanzas personales de uso privado, pensada para una persona y su círculo cercano. Maneja datos sensibles (tu dinero y, si lo autorizas, tu correo), por eso la privacidad pesa más que cualquier función.</p>
+
+  <h2>Qué datos guardamos</h2>
+  <ul>
+    <li><strong>Tu cuenta:</strong> nombre, correo y contraseña. La contraseña se guarda cifrada (bcrypt); nadie puede leerla.</li>
+    <li><strong>Tus finanzas:</strong> bancos, bolsillos, efectivo, tarjetas, movimientos, presupuestos, metas, préstamos y fotos de recibos que tú subas.</li>
+    <li><strong>Seguridad:</strong> PIN cifrado, llaves de huella o Face ID (solo la llave pública), códigos de recuperación cifrados y suscripciones a notificaciones.</li>
+    <li><strong>Gmail (opcional):</strong> si lo conectas, guardamos los permisos de acceso cifrados y los movimientos propuestos a partir de los correos de tu banco.</li>
+  </ul>
+
+  <h2>Cómo usamos Gmail</h2>
+  <ul>
+    <li>Pedimos solo permiso de <strong>lectura</strong> (<code>gmail.readonly</code>). Nunca pedimos tu contraseña de Google, nunca enviamos, borramos ni modificamos correos.</li>
+    <li>Solo leemos correos de los <strong>remitentes que tú autorizas</strong> (por ejemplo, las alertas de Bancolombia). El resto de tu buzón no se consulta.</li>
+    <li>De cada correo sacamos el valor, la fecha, la cuenta y el comercio para <strong>proponerte</strong> un movimiento. Nada afecta tus saldos hasta que tú lo aceptas.</li>
+    <li>El uso de la información recibida de las API de Google cumple la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Política de datos de usuario de los servicios de API de Google</a>, incluidos los requisitos de <strong>uso limitado</strong>: los datos solo se usan para darte esta función, no se usan para publicidad, no se venden, no se transfieren a terceros y ninguna persona los lee, salvo que tú lo pidas para resolver un problema o lo exija la ley.</li>
+    <li>Puedes desconectar Gmail cuando quieras desde la Bandeja: se borran tus permisos y, si lo eliges, todo lo importado. También puedes revocar el acceso en <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">tu cuenta de Google</a>.</li>
+  </ul>
+
+  <h2>Con quién se comparten</h2>
+  <p>Con nadie. No hay publicidad ni analítica de terceros. Los datos viven en el servidor de la app (y en sus copias de seguridad automáticas). Si usas <em>Hogar</em>, las personas que invites solo ven los gastos compartidos de ese hogar, nunca tus cuentas.</p>
+
+  <h2>Tus derechos</h2>
+  <ul>
+    <li><strong>Exportar:</strong> descarga todos tus datos en Excel o CSV desde <a href="/importar-exportar">Importar y exportar</a>.</li>
+    <li><strong>Corregir:</strong> puedes editar cualquier dato en la app.</li>
+    <li><strong>Eliminar:</strong> desde <a href="/configuracion#eliminar-cuenta">Configuración</a> puedes borrar tu cuenta con todo lo guardado (movimientos, fotos, conexión con Gmail y sesiones). Es inmediato y no se puede deshacer; las copias de seguridad se renuevan solas en 7 días.</li>
+  </ul>
+  <p class="muted">Esto aplica la Ley 1581 de 2012 de protección de datos personales de Colombia.</p>
+
+  <h2>Seguridad</h2>
+  <p>Conexión cifrada (HTTPS), sesiones que expiran, bloqueo con PIN o huella, permisos de Gmail cifrados y copias de seguridad diarias.</p>
+
+  <h2>Contacto</h2>
+  <p>Si tienes preguntas sobre tus datos, escríbele directamente a quien administra la app.</p>
+
+  <p class="mt-1"><a class="btn btn-ghost" href="<%= typeof user !== 'undefined' && user ? '/configuracion' : '/registro' %>">← Volver</a></p>
+</article>

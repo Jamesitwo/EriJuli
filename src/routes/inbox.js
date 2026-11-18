@@ -39,6 +39,7 @@ router.get('/bandeja', (req, res) => {
       WHERE c.user_id = ? AND c.archived = 0 ORDER BY b.name, c.kind DESC, c.name`).all(req.user.id),
     categories: db.prepare('SELECT * FROM categories WHERE user_id = ? AND archived = 0 ORDER BY kind, name').all(req.user.id),
     sources: db.prepare('SELECT * FROM income_sources WHERE user_id = ? AND archived = 0 ORDER BY name').all(req.user.id),
+    cards: db.prepare('SELECT * FROM credit_cards WHERE user_id = ? AND archived = 0 ORDER BY name').all(req.user.id),
   });
 });
 
@@ -49,27 +50,35 @@ router.post('/bandeja/:id/aceptar', (req, res) => {
   const amount = parseAmount(req.body.amount) || p.amount;
   const kind = ['ingreso', 'gasto', 'transferencia'].includes(req.body.kind) ? req.body.kind : p.kind;
   const date = req.body.date || p.date || todayISO();
-  const fromId = req.body.container_from_id || p.container_from_id;
+  let fromId = req.body.container_from_id || p.container_from_id;
   const toId = req.body.container_to_id || p.container_to_id;
+  // Compra con tarjeta de crédito: "tarjeta:ID" (o la tarjeta que reconoció el correo)
+  let card = null;
+  const cardRef = String(req.body.container_from_id || (p.card_id && !req.body.container_from_id ? 'tarjeta:' + p.card_id : ''));
+  if (cardRef.startsWith('tarjeta:') && kind !== 'ingreso') {
+    card = db.prepare('SELECT * FROM credit_cards WHERE user_id = ? AND id = ?').get(req.user.id, cardRef.slice(8)) || null;
+    fromId = null;
+  } else if (cardRef.startsWith('tarjeta:')) fromId = null;
+  if (card && kind !== 'gasto') { setFlash(req, 'error', 'Con una tarjeta de crédito solo se registran compras (gastos).'); return res.redirect('/bandeja'); }
 
   const from = fromId ? db.prepare('SELECT * FROM containers WHERE user_id = ? AND id = ?').get(req.user.id, fromId) : null;
   const to = toId ? db.prepare('SELECT * FROM containers WHERE user_id = ? AND id = ?').get(req.user.id, toId) : null;
-  if ((kind === 'gasto' || kind === 'transferencia') && !from) { setFlash(req, 'error', 'Elige de qué cuenta o bolsillo salió el dinero.'); return res.redirect('/bandeja'); }
+  if ((kind === 'gasto' && !from && !card) || (kind === 'transferencia' && !from)) { setFlash(req, 'error', 'Elige de qué cuenta o bolsillo salió el dinero.'); return res.redirect('/bandeja'); }
   if ((kind === 'ingreso' || kind === 'transferencia') && !to) { setFlash(req, 'error', 'Elige a qué cuenta o bolsillo entra el dinero.'); return res.redirect('/bandeja'); }
 
   const period = ensurePeriod(req.user, date);
   const info = db.prepare(`INSERT INTO transactions
-    (user_id, kind, amount, date, description, category_id, income_source_id, container_from_id, container_to_id, expense_type, period_id, origin, email_link, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'variable', ?, 'email', ?, ?)`)
+    (user_id, kind, amount, date, description, category_id, income_source_id, container_from_id, container_to_id, card_id, expense_type, period_id, origin, email_link, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'variable', ?, 'email', ?, ?)`)
     .run(req.user.id, kind, amount, date,
       String(req.body.description || p.description || 'Movimiento desde correo').trim(),
       req.body.category_id || p.category_id || null,
       kind === 'ingreso' ? (req.body.income_source_id || p.income_source_id || null) : null,
-      kind === 'ingreso' ? null : from.id, kind === 'gasto' ? null : to.id,
+      kind === 'ingreso' || card ? null : from.id, kind === 'gasto' ? null : to.id, card ? card.id : null,
       period.id, p.email_link || '', String(req.body.notes || '').trim());
 
-  db.prepare(`UPDATE proposed_movements SET status = 'aceptado', transaction_id = ?, category_id = ?, container_from_id = ?, container_to_id = ? WHERE id = ?`)
-    .run(info.lastInsertRowid, req.body.category_id || p.category_id || null, kind === 'ingreso' ? null : from.id, kind === 'gasto' ? null : to.id, p.id);
+  db.prepare(`UPDATE proposed_movements SET status = 'aceptado', transaction_id = ?, category_id = ?, container_from_id = ?, container_to_id = ?, card_id = ? WHERE id = ?`)
+    .run(info.lastInsertRowid, req.body.category_id || p.category_id || null, kind === 'ingreso' || card ? null : from.id, kind === 'gasto' ? null : to.id, card ? card.id : null, p.id);
 
   // Aprendizaje (RC-09): si el correo trae comercio/remitente, guarda la regla para la próxima
   const merchant = (p.description || '').trim();
@@ -77,7 +86,7 @@ router.post('/bandeja/:id/aceptar', (req, res) => {
     db.prepare(`INSERT INTO email_rules (user_id, merchant_pattern, kind, category_id, income_source_id, container_from_id, container_to_id)
       VALUES (?, ?, ?, ?, ?, ?, ?)`)
       .run(req.user.id, merchant.slice(0, 80), kind, req.body.category_id || null, req.body.income_source_id || null,
-        kind === 'ingreso' ? null : from.id, kind === 'gasto' ? null : to.id);
+        kind === 'ingreso' || card ? null : from.id, kind === 'gasto' ? null : to.id);
   }
 
   log(req.user.id, 'transaction', info.lastInsertRowid, 'aceptar propuesta', `${p.description} · ${formatMoney(amount, req.user.currency)}`);

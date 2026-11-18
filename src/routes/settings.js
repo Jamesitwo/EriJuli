@@ -4,6 +4,7 @@ const { db } = require('../db');
 const { setFlash } = require('../middleware');
 const { log } = require('../services/audit');
 
+const { validTimeZone } = require('../utils/dates');
 const router = express.Router();
 
 router.get('/configuracion', (req, res) => {
@@ -18,7 +19,7 @@ router.post('/configuracion', (req, res) => {
   const { name, currency, timezone, period_type, quincena_dia1, quincena_dia2, budget_includes_fixed, rollover_enabled, alert_days_fixed, alert_low_balance } = req.body;
   db.prepare(`UPDATE users SET name = ?, currency = ?, timezone = ?, period_type = ?, quincena_dia1 = ?, quincena_dia2 = ?,
     budget_includes_fixed = ?, rollover_enabled = ?, alert_days_fixed = ?, alert_low_balance = ? WHERE id = ?`)
-    .run(String(name || '').trim(), currency || u.currency, timezone || u.timezone,
+    .run(String(name || '').trim(), currency || u.currency, (timezone && validTimeZone(timezone)) ? timezone : u.timezone,
       period_type === 'quincenal' ? 'quincenal' : 'mensual',
       Math.min(Math.max(1, Number(quincena_dia1) || 1), 28),
       Math.min(Math.max(2, Number(quincena_dia2) || 16), 28),
@@ -51,6 +52,27 @@ router.post('/categorias/:id', (req, res) => {
     .run(String(req.body.name || c.name).trim(), req.body.color || c.color, req.body.archived ? 1 : 0, c.id);
   setFlash(req, 'success', 'Categoría actualizada.');
   res.redirect('/configuracion');
+});
+
+// Eliminar la cuenta con todo lo guardado (RN-05)
+router.post('/cuenta/eliminar', async (req, res) => {
+  const bcrypt = require('bcryptjs');
+  if (!bcrypt.compareSync(String(req.body.password || ''), req.user.password_hash)) {
+    setFlash(req, 'error', 'La contraseña no es correcta. Tu cuenta sigue intacta.');
+    return res.redirect('/configuracion#eliminar-cuenta');
+  }
+  if (String(req.body.confirmacion || '').trim().toUpperCase() !== 'ELIMINAR') {
+    setFlash(req, 'error', 'Escribe ELIMINAR para confirmar. Tu cuenta sigue intacta.');
+    return res.redirect('/configuracion#eliminar-cuenta');
+  }
+  const userId = req.user.id;
+  try { await require('../services/gmail').revoke(userId); } catch { /* mejor esfuerzo: igual se borran las credenciales */ }
+  require('../services/account').deleteAccount(userId);
+  console.log(`Cuenta ${userId} eliminada a pedido de la persona.`);
+  req.session.regenerate(() => {
+    req.session.flash = { type: 'success', text: 'Tu cuenta y todos tus datos fueron eliminados. Gracias por usar EriJuli.' };
+    res.redirect('/login');
+  });
 });
 
 module.exports = router;

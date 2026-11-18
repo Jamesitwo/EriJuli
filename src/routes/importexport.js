@@ -46,7 +46,7 @@ function toCSV(headers, rows) {
 
 // ---------- Página ----------
 router.get('/importar-exportar', (req, res) => {
-  res.render('importexport/index', { title: 'Importar y exportar' });
+  res.render('importexport/index', { title: 'Importar y exportar', isAdmin: isServerAdmin(req.user) });
 });
 
 router.get('/plantilla-movimientos.csv', (req, res) => {
@@ -91,8 +91,29 @@ router.get('/exportar/bolsillos.csv', (req, res) => {
   res.send(toCSV(['banco', 'tipo', 'nombre', 'proposito', 'saldo_inicial'], rows));
 });
 
-// Respaldo completo de la base de datos (RN-05, RN-08)
+// Todos mis datos en Excel (RN-05): una hoja por tipo de dato, solo los de esta persona
+router.get('/exportar/todo.xlsx', (req, res) => {
+  const { exportXlsx } = require('../services/account');
+  const buf = exportXlsx(req.user.id);
+  log(req.user.id, 'export', null, 'exportar todo', 'Excel con todos los datos');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="erijuli_mis_datos_${todayISO()}.xlsx"`);
+  res.send(buf);
+});
+
+/** El respaldo .db trae los datos de TODAS las personas: solo para quien administra el servidor. */
+function isServerAdmin(user) {
+  const admin = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  if (admin) return user.email === admin;
+  return db.prepare('SELECT COUNT(*) AS n FROM users').get().n === 1;
+}
+
+// Respaldo completo de la base de datos (RN-08)
 router.get('/exportar/respaldo.db', (req, res) => {
+  if (!isServerAdmin(req.user)) {
+    setFlash(req, 'error', 'El respaldo de la base de datos incluye a todas las personas de la app; solo lo descarga quien la administra (ADMIN_EMAIL). Usa "Todos mis datos en Excel".');
+    return res.redirect('/importar-exportar');
+  }
   const { createBackup } = require('../services/backup');
   const file = createBackup();
   if (!file) {

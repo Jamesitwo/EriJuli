@@ -1,6 +1,6 @@
-<% const currency = user.currency; %>
+<% const currency = user.currency; const isCash = bank.kind === 'efectivo'; %>
 <div class="hero hero-sm">
-  <div class="hero-label">Total en <%= bank.name %></div>
+  <div class="hero-label"><%= isCash ? 'Total en efectivo' : 'Total en ' + bank.name %></div>
   <div class="hero-amount"><%= formatMoney(total, currency) %></div>
   <a class="btn btn-ghost btn-sm" href="/bancos">← Volver a bancos</a>
 </div>
@@ -25,6 +25,13 @@
           <label>Propósito</label>
           <input name="purpose" value="<%= c.purpose || '' %>" placeholder="Ej. Papeles de la moto 2027">
         </div>
+        <% if (!isCash && c.kind === 'cuenta') { %>
+        <div class="field">
+          <label>Últimos 4 dígitos de la cuenta</label>
+          <input name="last4" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" value="<%= c.last4 || '' %>" placeholder="Ej. 7890">
+          <small class="muted">Sirve para reconocer esta cuenta en los correos del banco (ej. "*7890").</small>
+        </div>
+        <% } else { %><input type="hidden" name="last4" value="<%= c.last4 || '' %>"><% } %>
         <div class="field">
           <label>Saldo inicial (antes de los movimientos)</label>
           <input name="initial_balance" inputmode="decimal" value="<%= (c.initial_balance / 100).toString().replace('.', ',') %>">
@@ -38,12 +45,13 @@
 
 <!-- Agregar bolsillo -->
 <section class="card">
-  <h2>Agregar bolsillo</h2>
+  <h2><%= isCash ? 'Agregar lugar de efectivo' : 'Agregar bolsillo' %></h2>
+  <% if (isCash) { %><p class="muted">Por ejemplo "Caja en casa" o "Alcancía". Cada lugar lleva su propio saldo.</p><% } %>
   <form method="post" action="/bancos/<%= bank.id %>/bolsillos" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="field">
       <label for="p-name">Nombre</label>
-      <input id="p-name" name="name" required placeholder="Ej. Fondo de emergencia">
+      <input id="p-name" name="name" required placeholder="<%= isCash ? 'Ej. Caja en casa' : 'Ej. Fondo de emergencia' %>">
     </div>
     <div class="field">
       <label for="p-purpose">Propósito</label>
@@ -53,13 +61,13 @@
       <label for="p-initial">Saldo inicial</label>
       <input id="p-initial" name="initial_balance" inputmode="decimal" placeholder="0">
     </div>
-    <button class="btn btn-primary" type="submit">Crear bolsillo</button>
+    <button class="btn btn-primary" type="submit"><%= isCash ? 'Agregar' : 'Crear bolsillo' %></button>
   </form>
 </section>
 
 <!-- Mover dinero -->
 <section class="card">
-  <h2>Mover dinero desde este banco</h2>
+  <h2><%= isCash ? 'Consignar o retirar' : 'Mover dinero desde este banco' %></h2>
   <form method="post" action="/transferencias" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" name="back" value="/bancos/<%= bank.id %>">
