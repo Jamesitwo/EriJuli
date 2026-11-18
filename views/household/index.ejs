@@ -1,0 +1,150 @@
+<% const currency = user.currency; const me = user.id; const mine = net.get(me) || 0;
+   const name = function (id) { const m = byId.get(id); return m ? (m.id === me ? 'Tú' : m.label) : 'Alguien'; };
+   const budget = household.monthly_budget; const pct = budget > 0 ? Math.round(monthSpent / budget * 100) : 0; %>
+
+<!-- Saldo entre las personas -->
+<section class="hero hero-sm">
+  <div class="hero-label"><%= mine > 0 ? 'Te deben' : mine < 0 ? 'Debes' : 'Están a paz y salvo' %></div>
+  <div class="hero-amount <%= mine < 0 ? 'amount-over' : mine > 0 ? 'text-success' : '' %>"><%= formatMoney(Math.abs(mine), currency) %></div>
+  <% if (transfers.length) { %>
+    <div class="stack mt-1" style="gap:var(--space-2)">
+      <% transfers.forEach(function (t) { %>
+        <div class="settle-row">
+          <span><strong><%= name(t.from) %></strong> <%= t.from === me ? 'le debes' : 'le debe' %> a <strong><%= name(t.to) %></strong> <span class="num"><%= formatMoney(t.amount, currency) %></span></span>
+          <% if (t.from === me || t.to === me) { %>
+            <form method="post" action="/hogar/saldar" data-confirm="<%= t.from === me ? '¿Ya le pagaste ' + formatMoney(t.amount, currency) + ' a ' + name(t.to) + '?' : '¿' + name(t.from) + ' ya te pagó ' + formatMoney(t.amount, currency) + '?' %>">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="from_user" value="<%= t.from %>"><input type="hidden" name="to_user" value="<%= t.to %>">
+              <input type="hidden" name="amount" value="<%= (t.amount / 100) %>">
+              <button class="btn btn-ghost btn-sm" type="submit">Marcar pagado</button>
+            </form>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<!-- Presupuesto del hogar -->
+<% if (budget > 0) { %>
+<section class="card">
+  <div class="flex-between"><h2>Este mes</h2><span class="num"><strong><%= formatMoney(monthSpent, currency) %></strong> <span class="muted">de <%= formatMoney(budget, currency) %></span></span></div>
+  <div class="progress"><div class="progress-bar <%= pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : '' %>" style="width:<%= Math.min(100, pct) %>%"></div></div>
+  <small class="<%= pct >= 100 ? 'text-danger' : 'muted' %>"><%= pct >= 100 ? 'Se pasaron por ' + formatMoney(monthSpent - budget, currency) : 'Quedan ' + formatMoney(budget - monthSpent, currency) + ' para gastos del hogar' %></small>
+</section>
+<% } %>
+
+<!-- Agregar gasto compartido -->
+<section class="card">
+  <h2>Agregar gasto compartido</h2>
+  <form method="post" action="/hogar/gastos" class="stack" id="hh-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="hh-amount">Valor</label><input id="hh-amount" name="amount" class="input-money" inputmode="decimal" required placeholder="0"></div>
+    <div class="field-row">
+      <div class="field"><label for="hh-desc">Descripción</label><input id="hh-desc" name="description" placeholder="Ej. Mercado de la semana"></div>
+      <div class="field"><label for="hh-date">Fecha</label><input id="hh-date" type="date" name="date" value="<%= dates.todayISO() %>"></div>
+    </div>
+    <div class="field">
+      <label for="hh-payer">¿Quién pagó?</label>
+      <select id="hh-payer" name="paid_by" data-picker="chips">
+        <% members.forEach(function (m) { %><option value="<%= m.id %>" <%= m.id === me ? 'selected' : '' %>><%= m.id === me ? 'Yo' : m.label %></option><% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label>¿Cómo se reparte?</label>
+      <div class="segmented seg-2">
+        <label><input type="radio" name="split" value="igual" checked> Entre todos</label>
+        <label><input type="radio" name="split" value="completo"> Lo debe el resto</label>
+      </div>
+      <small class="muted">"Lo debe el resto": pagaste algo que era solo de los demás.</small>
+    </div>
+    <div class="field">
+      <label for="hh-cat">Categoría del hogar (opcional)</label>
+      <input id="hh-cat" name="category" list="hh-cats" placeholder="Ej. Mercado, Arriendo, Servicios">
+      <datalist id="hh-cats"><% ['Mercado', 'Arriendo', 'Servicios', 'Aseo', 'Mascotas', 'Salidas'].concat(categories).filter(function (v, i, a) { return a.indexOf(v) === i; }).forEach(function (c) { %><option value="<%= c %>"><% }) %></datalist>
+    </div>
+    <details class="also-mine" id="hh-mine">
+      <summary class="link">Registrarlo también en mis movimientos</summary>
+      <input type="hidden" name="also_mine" value="" id="hh-also">
+      <p class="muted mt-1">Si lo pagaste tú, descuenta el valor completo del bolsillo que elijas.</p>
+      <div class="field">
+        <label for="hh-from">Salió de</label>
+        <select id="hh-from" name="container_from_id" data-picker>
+          <option value="">Elige cuenta o bolsillo…</option>
+          <% containers.forEach(function (c) { %><option value="<%= c.id %>" data-name="<%= c.name %>" data-bank="<%= c.bank_name %>" data-kind="<%= c.kind %>" data-balance="<%= formatMoney(c.balance, currency) %>"><%= c.bank_name %> · <%= c.name %></option><% }) %>
+        </select>
+      </div>
+      <div class="field">
+        <label for="hh-mycat">Mi categoría</label>
+        <select id="hh-mycat" name="category_id"><option value="">Sin categoría</option><% myCategories.forEach(function (c) { %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select>
+      </div>
+    </details>
+    <button class="btn btn-primary btn-block" type="submit">Guardar gasto compartido</button>
+  </form>
+</section>
+
+<!-- Gastos -->
+<section class="card">
+  <div class="card-head"><h2>Gastos del hogar</h2></div>
+  <% if (!expenses.length) { %><p class="muted">Todavía no hay gastos compartidos.</p><% } %>
+  <div class="stack">
+    <% expenses.forEach(function (e) { %>
+      <div class="tx-row">
+        <span class="tx-icon"><svg class="ic ic-sm"><use href="#i-users"/></svg></span>
+        <span class="tx-info"><strong><%= e.description %></strong><small class="muted"><%= dates.formatDate(e.date) %> · pagó <%= name(e.paid_by) %><%= e.category ? ' · ' + e.category : '' %><%= e.split === 'completo' ? ' · lo debe el resto' : '' %></small></span>
+        <span class="num"><strong><%= formatMoney(e.amount, currency) %></strong></span>
+        <form method="post" action="/hogar/gastos/<%= e.id %>/eliminar" data-confirm="¿Eliminar este gasto compartido?">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="ej-icon-btn" type="submit" aria-label="Eliminar gasto"><svg class="ic ic-sm"><use href="#i-x"/></svg></button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+  <% if (settlements.length) { %>
+    <h3 class="mt-1">Pagos entre ustedes</h3>
+    <div class="stack" style="gap:0">
+      <% settlements.forEach(function (s) { %>
+        <div class="tx-row"><span class="tx-icon ingreso">⇄</span><span class="tx-info"><strong><%= name(s.from_user) %> → <%= name(s.to_user) %></strong><small class="muted"><%= dates.formatDate(s.date) %><%= s.note ? ' · ' + s.note : '' %></small></span><span class="num"><%= formatMoney(s.amount, currency) %></span></div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<!-- Personas y ajustes -->
+<section class="card">
+  <h2>Personas</h2>
+  <div class="member-list">
+    <% members.forEach(function (m) { const v = net.get(m.id) || 0; %>
+      <div class="member"><span class="avatar"><%= m.label.charAt(0).toUpperCase() %></span><span><strong><%= m.id === me ? m.label + ' (tú)' : m.label %></strong><small class="muted"><%= v > 0 ? 'le deben ' + formatMoney(v, currency) : v < 0 ? 'debe ' + formatMoney(-v, currency) : 'a paz y salvo' %></small></span></div>
+    <% }) %>
+  </div>
+  <div class="invite mt-1">
+    <div><small class="muted">Código para invitar</small><div class="invite-code"><%= household.invite_code %></div></div>
+    <button class="btn btn-ghost btn-sm" type="button" data-copy="Únete a mi hogar en EriJuli con el código <%= household.invite_code %>">Copiar invitación</button>
+  </div>
+  <details class="mt-1">
+    <summary class="link">Ajustes del hogar</summary>
+    <form method="post" action="/hogar/ajustes" class="stack mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field-row">
+        <div class="field"><label>Nombre</label><input name="name" value="<%= household.name %>"></div>
+        <div class="field"><label>Presupuesto mensual del hogar</label><input name="monthly_budget" inputmode="decimal" value="<%= (household.monthly_budget / 100).toString().replace('.', ',') %>"></div>
+      </div>
+      <label class="check"><input type="checkbox" name="new_code" value="1"> Crear un código de invitación nuevo</label>
+      <button class="btn btn-ghost" type="submit">Guardar</button>
+    </form>
+    <form method="post" action="/hogar/salir" class="mt-1" data-confirm="¿Salir de este hogar? Tus datos personales no se tocan.">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-danger btn-block" type="submit">Salir del hogar</button>
+    </form>
+  </details>
+</section>
+<script>
+  (function () {
+    var d = document.getElementById('hh-mine'), h = document.getElementById('hh-also');
+    if (d) d.addEventListener('toggle', function () { h.value = d.open ? '1' : ''; });
+    document.querySelectorAll('[data-copy]').forEach(function (b) { b.addEventListener('click', function () { navigator.clipboard && navigator.clipboard.writeText(b.dataset.copy).then(function () { b.textContent = 'Copiada'; }); }); });
+    // Segmentado sin JS de app.js: marcar activo
+    document.querySelectorAll('#hh-form .segmented input').forEach(function (i) { i.addEventListener('change', function () { i.closest('.segmented').querySelectorAll('label').forEach(function (l) { l.classList.toggle('active', l.querySelector('input').checked); }); }); });
+  })();
+</script>

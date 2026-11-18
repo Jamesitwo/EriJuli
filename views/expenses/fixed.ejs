@@ -1,0 +1,199 @@
+<% const currency = user.currency; %>
+<div class="hero hero-sm">
+  <div class="hero-label">Gastos fijos de <%= selected.label %></div>
+  <div class="hero-amount"><%= formatMoney(paid.total + pending.total, currency) %></div>
+  <div class="hero-sub">
+    Pagado <%= formatMoney(paid.total, currency) %> ·
+    Pendiente <strong class="<%= pending.total > 0 ? 'text-danger' : '' %>"><%= formatMoney(pending.total, currency) %></strong> (<%= pending.count %>)
+  </div>
+</div>
+
+<!-- Selector de periodo -->
+<form method="get" action="/gastos-fijos" class="card filter-grid">
+  <div class="field">
+    <label for="periodo">Periodo</label>
+    <select id="periodo" name="periodo" onchange="this.form.submit()">
+      <% periods.forEach(function (p) { %>
+        <option value="<%= p.id %>" <%= p.id === selected.id ? 'selected' : '' %>><%= p.label %></option>
+      <% }) %>
+    </select>
+  </div>
+</form>
+
+<!-- Instancias del periodo -->
+<section class="card">
+  <div class="card-head"><h2>Este periodo</h2></div>
+  <% if (!instances.length) { %><p class="muted">No hay gastos fijos en este periodo.</p><% } %>
+  <div class="stack">
+    <% instances.forEach(function (fi) { %>
+      <div class="fixed-item">
+        <div class="flex-between">
+          <div>
+            <strong><%= fi.description %></strong>
+            <small class="muted">
+              Vence <%= dates.formatDate(fi.due_date) %>
+              <% if (fi.category_name) { %> · <%= fi.category_name %><% } %>
+              <% if (fi.payment_method) { %> · <%= fi.payment_method %><% } %>
+            </small>
+          </div>
+          <strong class="<%= fi.status === 'pagado' ? 'text-success' : '' %>"><%= formatMoney(fi.amount, currency) %></strong>
+        </div>
+        <% if (fi.status === 'pagado') { %>
+          <div class="flex-between mt-1">
+            <span class="badge badge-success">Pagado <%= dates.formatDate(fi.paid_date) %></span>
+            <form method="post" action="/gastos-fijos/instancia/<%= fi.id %>/despagar">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-ghost btn-sm" type="submit">Deshacer</button>
+            </form>
+          </div>
+        <% } else { %>
+          <details class="mt-1">
+            <summary class="link">Marcar como pagado</summary>
+            <form method="post" action="/gastos-fijos/instancia/<%= fi.id %>/pagar" class="stack mt-1">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="field">
+                <label>Salió de</label>
+                <select name="container_id" required>
+                  <% containers.forEach(function (c) { %>
+                    <option value="<%= c.id %>" <%= c.name === fi.container_name ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="field">
+                <label>Fecha de pago</label>
+                <input type="date" name="date" value="<%= dates.todayISO() %>">
+              </div>
+              <button class="btn btn-primary btn-sm" type="submit">Confirmar pago</button>
+            </form>
+          </details>
+        <% } %>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<!-- Plantillas de gastos fijos -->
+<section class="card">
+  <div class="card-head"><h2>Gastos fijos recurrentes</h2></div>
+  <p class="muted">Se generan solos como pendientes en cada periodo y se marcan pagados cuando los cubres.</p>
+  <div class="stack">
+    <% templates.forEach(function (f) { %>
+      <details class="fixed-item">
+        <summary>
+          <span>
+            <strong><%= f.description %></strong>
+            <small class="muted">día <%= f.due_day %> · <%= f.frequency %> · <%= f.category_name || 'Sin categoría' %> · <%= f.container_name || 'Sin cuenta' %></small>
+          </span>
+          <span class="flex-between">
+            <strong><%= formatMoney(f.amount, currency) %></strong>
+            <% if (!f.active) { %><span class="badge">inactivo</span><% } %>
+          </span>
+        </summary>
+        <form method="post" action="/gastos-fijos/<%= f.id %>/editar" class="stack mt-1">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field">
+            <label>Descripción</label>
+            <input name="description" value="<%= f.description %>" required>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Valor</label>
+              <input name="amount" inputmode="decimal" value="<%= (f.amount / 100).toString().replace('.', ',') %>">
+            </div>
+            <div class="field">
+              <label>Día de pago</label>
+              <input name="due_day" type="number" min="1" max="28" value="<%= f.due_day %>">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Categoría</label>
+              <select name="category_id">
+                <option value="">Sin categoría</option>
+                <% categories.forEach(function (c) { %>
+                  <option value="<%= c.id %>" <%= f.category_id === c.id ? 'selected' : '' %>><%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="field">
+              <label>Salen de</label>
+              <select name="container_id">
+                <option value="">Elegir al pagar</option>
+                <% containers.forEach(function (c) { %>
+                  <option value="<%= c.id %>" <%= f.container_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Medio de pago</label>
+            <input name="payment_method" value="<%= f.payment_method || '' %>" placeholder="Ej. Tarjeta débito">
+          </div>
+          <label class="check"><input type="checkbox" name="active" <%= f.active ? 'checked' : '' %>> Activo (se genera cada periodo)</label>
+          <div class="flex-between">
+            <button class="btn btn-primary btn-sm" type="submit">Guardar</button>
+          </div>
+        </form>
+        <form method="post" action="/gastos-fijos/<%= f.id %>/eliminar" onsubmit="return confirm('¿Eliminar este gasto fijo y sus periodos?');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn btn-danger btn-sm btn-block" type="submit">Eliminar</button>
+        </form>
+      </details>
+    <% }) %>
+  </div>
+
+  <details class="mt-1">
+    <summary class="link">＋ Agregar gasto fijo</summary>
+    <form method="post" action="/gastos-fijos" class="stack mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="f-desc">Descripción</label>
+        <input id="f-desc" name="description" required placeholder="Ej. Plan celular">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-amount">Valor</label>
+          <input id="f-amount" name="amount" inputmode="decimal" required placeholder="0">
+        </div>
+        <div class="field">
+          <label for="f-day">Día de pago</label>
+          <input id="f-day" name="due_day" type="number" min="1" max="28" value="1">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-cat">Categoría</label>
+          <select id="f-cat" name="category_id">
+            <option value="">Sin categoría</option>
+            <% categories.forEach(function (c) { %>
+              <option value="<%= c.id %>"><%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-cont">Salen de</label>
+          <select id="f-cont" name="container_id">
+            <option value="">Elegir al pagar</option>
+            <% containers.forEach(function (c) { %>
+              <option value="<%= c.id %>"><%= c.bank_name %> · <%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-method">Medio de pago</label>
+          <input id="f-method" name="payment_method" placeholder="Ej. Tarjeta débito">
+        </div>
+        <div class="field">
+          <label for="f-freq">Frecuencia</label>
+          <select id="f-freq" name="frequency">
+            <option value="mensual">Mensual</option>
+            <option value="quincenal">Quincenal</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Crear gasto fijo</button>
+    </form>
+  </details>
+</section>

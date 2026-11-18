@@ -1,0 +1,19 @@
+<section class="card">
+  <div class="card-head"><h2>Historial de cambios</h2></div>
+  <p class="muted">Todo lo que cambia saldos y movimientos queda registrado: quién lo hizo (tú, un correo o una importación) y cuándo.</p>
+  <% if (!entries.length) { %>
+    <p class="muted">Aún no hay cambios registrados.</p>
+  <% } %>
+  <div class="stack">
+    <% entries.forEach(function (e) { %>
+      <div class="history-row">
+        <span class="badge"><%= e.origin %></span>
+        <span class="tx-info">
+          <strong><%= e.action %> · <%= e.entity %></strong>
+          <small class="muted"><%= e.details %></small>
+        </span>
+        <small class="muted"><%= e.created_at %></small>
+      </div>
+    <% }) %>
+  </div>
+</section>

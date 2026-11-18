@@ -1,0 +1,138 @@
+<form method="post" action="/configuracion" class="stack">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <section class="card">
+    <h2>Tu perfil</h2>
+    <div class="field">
+      <label for="s-name">Nombre</label>
+      <input id="s-name" name="name" value="<%= user.name || '' %>" placeholder="¿Cómo te llamas?">
+    </div>
+    <div class="field">
+      <label>Correo</label>
+      <input value="<%= user.email %>" disabled>
+    </div>
+    <div class="field">
+      <label for="s-currency">Moneda</label>
+      <select id="s-currency" name="currency">
+        <option value="COP" <%= user.currency === 'COP' ? 'selected' : '' %>>Pesos colombianos ($)</option>
+        <option value="USD" <%= user.currency === 'USD' ? 'selected' : '' %>>Dólares (US$)</option>
+        <option value="EUR" <%= user.currency === 'EUR' ? 'selected' : '' %>>Euros (€)</option>
+        <option value="MXN" <%= user.currency === 'MXN' ? 'selected' : '' %>>Pesos mexicanos (MX$)</option>
+      </select>
+    </div>
+  </section>
+
+  <a class="alert alert-info" href="/seguridad"><span>Contraseña, códigos de recuperación, bloqueo con PIN o huella y notificaciones están en <strong>Seguridad</strong>.</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+
+  <section class="card">
+    <h2>Apariencia</h2>
+    <% const theme = user.theme || 'auto'; %>
+    <fieldset class="field" style="border:0">
+      <legend class="label-legend">Modo de color</legend>
+      <div class="segmented" role="radiogroup" style="grid-template-columns:repeat(3,1fr)">
+        <label><input type="radio" name="theme" value="auto" <%= theme === 'auto' ? 'checked' : '' %>> Automático</label>
+        <label><input type="radio" name="theme" value="claro" <%= theme === 'claro' ? 'checked' : '' %>> Claro</label>
+        <label><input type="radio" name="theme" value="oscuro" <%= theme === 'oscuro' ? 'checked' : '' %>> Oscuro</label>
+      </div>
+      <small class="muted">Automático sigue el modo de tu celular o computador.</small>
+    </fieldset>
+    <% const motion = user.motion || 'auto'; %>
+    <fieldset class="field" style="border:0">
+      <legend class="label-legend">Animaciones</legend>
+      <div class="segmented" role="radiogroup" style="grid-template-columns:repeat(3,1fr)">
+        <label><input type="radio" name="motion" value="auto" <%= motion === 'auto' ? 'checked' : '' %>> Automático</label>
+        <label><input type="radio" name="motion" value="si" <%= motion === 'si' ? 'checked' : '' %>> Siempre</label>
+        <label><input type="radio" name="motion" value="no" <%= motion === 'no' ? 'checked' : '' %>> Nunca</label>
+      </div>
+      <small class="muted" id="motion-help">Automático respeta "Efectos de animación" de Windows y "Reducir movimiento" del celular.</small>
+      <script>if (matchMedia('(prefers-reduced-motion: reduce)').matches) { document.getElementById('motion-help').innerHTML = 'Tu equipo tiene las animaciones desactivadas (en Windows: Configuración → Accesibilidad → Efectos visuales → <strong>Efectos de animación</strong>). Elige <strong>Siempre</strong> para verlas en EriJuli de todas formas.'; }</script>
+    </fieldset>
+  </section>
+
+  <section class="card">
+    <h2>Presupuesto y periodos</h2>
+    <div class="field">
+      <label for="s-period">Tipo de periodo</label>
+      <select id="s-period" name="period_type">
+        <option value="mensual" <%= user.period_type === 'mensual' ? 'selected' : '' %>>Mensual (un presupuesto por mes)</option>
+        <option value="quincenal" <%= user.period_type === 'quincenal' ? 'selected' : '' %>>Quincenal (dos presupuestos por mes)</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="s-q1">Primera quincena empieza el día</label>
+        <input id="s-q1" name="quincena_dia1" type="number" min="1" max="28" value="<%= user.quincena_dia1 %>">
+      </div>
+      <div class="field">
+        <label for="s-q2">Segunda quincena empieza el día</label>
+        <input id="s-q2" name="quincena_dia2" type="number" min="2" max="28" value="<%= user.quincena_dia2 %>">
+      </div>
+    </div>
+    <label class="check">
+      <input type="checkbox" name="budget_includes_fixed" <%= user.budget_includes_fixed ? 'checked' : '' %>>
+      Los gastos fijos salen del presupuesto del periodo
+    </label>
+    <label class="check">
+      <input type="checkbox" name="rollover_enabled" <%= user.rollover_enabled ? 'checked' : '' %>>
+      Arrastrar al siguiente periodo lo que no gasté
+    </label>
+  </section>
+
+  <section class="card">
+    <h2>Alertas</h2>
+    <div class="field">
+      <label for="s-days">Avisarme de gastos fijos pendientes con</label>
+      <div class="input-suffix">
+        <input id="s-days" name="alert_days_fixed" type="number" min="0" max="30" value="<%= user.alert_days_fixed %>">
+        <span>días de anticipación</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="s-low">Avisarme cuando mi saldo total baje de</label>
+      <input id="s-low" name="alert_low_balance" inputmode="decimal" value="<%= (user.alert_low_balance / 100).toString().replace('.', ',') %>">
+    </div>
+  </section>
+
+  <button class="btn btn-primary btn-block" type="submit">Guardar configuración</button>
+</form>
+
+<!-- Categorías -->
+<section class="card">
+  <h2>Categorías</h2>
+  <div class="stack">
+    <% categories.forEach(function (c) { %>
+      <form method="post" action="/categorias/<%= c.id %>" class="cat-row">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="color" name="color" value="<%= c.color %>" class="cat-color">
+        <input name="name" value="<%= c.name %>" class="cat-name">
+        <span class="badge"><%= c.kind === 'ingreso' ? 'ingreso' : 'gasto' %></span>
+        <label class="check"><input type="checkbox" name="archived" <%= c.archived ? 'checked' : '' %>> oculta</label>
+        <button class="btn btn-ghost btn-sm" type="submit">Guardar</button>
+      </form>
+    <% }) %>
+  </div>
+  <details class="mt-1">
+    <summary class="link">＋ Agregar categoría</summary>
+    <form method="post" action="/categorias" class="filter-grid mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label>Nombre</label>
+        <input name="name" required placeholder="Ej. Mascotas">
+      </div>
+      <div class="field">
+        <label>Tipo</label>
+        <select name="kind">
+          <option value="gasto">Gasto</option>
+          <option value="ingreso">Ingreso</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <input type="color" name="color" value="#5a6560">
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" type="submit">Crear</button>
+      </div>
+    </form>
+  </details>
+</section>

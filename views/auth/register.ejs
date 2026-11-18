@@ -1,0 +1,39 @@
+<div class="card auth-card">
+  <h1>Crear cuenta</h1>
+  <p class="muted">Toma menos de un minuto</p>
+  <form method="post" action="/registro" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="name">Nombre</label>
+      <input id="name" type="text" name="name" autocomplete="name" placeholder="¿Cómo te llamas?">
+    </div>
+    <div class="field">
+      <label for="email">Correo</label>
+      <input id="email" type="email" name="email" required autocomplete="email" placeholder="tucorreo@ejemplo.com">
+    </div>
+    <div class="field">
+      <label for="password">Contraseña (mínimo 8 caracteres)</label>
+      <input id="password" type="password" name="password" required minlength="8" autocomplete="new-password" placeholder="••••••••">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="currency">Moneda</label>
+        <select id="currency" name="currency">
+          <option value="COP" selected>Pesos colombianos ($)</option>
+          <option value="USD">Dólares (US$)</option>
+          <option value="EUR">Euros (€)</option>
+          <option value="MXN">Pesos mexicanos (MX$)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="period_type">Presupuesto</label>
+        <select id="period_type" name="period_type">
+          <option value="mensual" selected>Mensual</option>
+          <option value="quincenal">Quincenal</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Crear cuenta</button>
+  </form>
+  <p class="center muted">¿Ya tienes cuenta? <a href="/login">Inicia sesión</a></p>
+</div>

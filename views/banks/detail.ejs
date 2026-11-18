@@ -1,0 +1,92 @@
+<% const currency = user.currency; %>
+<div class="hero hero-sm">
+  <div class="hero-label">Total en <%= bank.name %></div>
+  <div class="hero-amount"><%= formatMoney(total, currency) %></div>
+  <a class="btn btn-ghost btn-sm" href="/bancos">← Volver a bancos</a>
+</div>
+
+<!-- Bolsillos y cuenta -->
+<% containers.forEach(function (c) { %>
+  <section class="card">
+    <div class="card-head">
+      <h2><%= c.kind === 'cuenta' ? '' : '' %> <%= c.name %></h2>
+      <strong><%= formatMoney(c.balance, currency) %></strong>
+    </div>
+    <% if (c.purpose) { %><p class="muted"><%= c.purpose %></p><% } %>
+    <details>
+      <summary class="link">Editar</summary>
+      <form method="post" action="/bolsillos/<%= c.id %>/editar" class="stack mt-1">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label>Nombre</label>
+          <input name="name" value="<%= c.name %>" required>
+        </div>
+        <div class="field">
+          <label>Propósito</label>
+          <input name="purpose" value="<%= c.purpose || '' %>" placeholder="Ej. Papeles de la moto 2027">
+        </div>
+        <div class="field">
+          <label>Saldo inicial (antes de los movimientos)</label>
+          <input name="initial_balance" inputmode="decimal" value="<%= (c.initial_balance / 100).toString().replace('.', ',') %>">
+        </div>
+        <label class="check"><input type="checkbox" name="archived" <%= c.archived ? 'checked' : '' %>> Archivar (ocultar sin borrar)</label>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+      </form>
+    </details>
+  </section>
+<% }) %>
+
+<!-- Agregar bolsillo -->
+<section class="card">
+  <h2>Agregar bolsillo</h2>
+  <form method="post" action="/bancos/<%= bank.id %>/bolsillos" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="p-name">Nombre</label>
+      <input id="p-name" name="name" required placeholder="Ej. Fondo de emergencia">
+    </div>
+    <div class="field">
+      <label for="p-purpose">Propósito</label>
+      <input id="p-purpose" name="purpose" placeholder="¿Para qué es este bolsillo?">
+    </div>
+    <div class="field">
+      <label for="p-initial">Saldo inicial</label>
+      <input id="p-initial" name="initial_balance" inputmode="decimal" placeholder="0">
+    </div>
+    <button class="btn btn-primary" type="submit">Crear bolsillo</button>
+  </form>
+</section>
+
+<!-- Mover dinero -->
+<section class="card">
+  <h2>Mover dinero desde este banco</h2>
+  <form method="post" action="/transferencias" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="back" value="/bancos/<%= bank.id %>">
+    <div class="field">
+      <label for="t-from">De</label>
+      <select id="t-from" name="container_from_id" required>
+        <% allContainers.forEach(function (c) { %>
+          <option value="<%= c.id %>" <%= c.bank_id === bank.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %> (<%= formatMoney(c.balance, currency) %>)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="t-to">A</label>
+      <select id="t-to" name="container_to_id" required>
+        <% allContainers.forEach(function (c) { %>
+          <option value="<%= c.id %>"><%= c.bank_name %> · <%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="t-amount">Valor</label>
+      <input id="t-amount" name="amount" inputmode="decimal" required placeholder="0">
+    </div>
+    <div class="field">
+      <label for="t-desc">Descripción</label>
+      <input id="t-desc" name="description" placeholder="Ej. Separar para la moto">
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Mover dinero</button>
+  </form>
+</section>

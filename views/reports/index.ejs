@@ -1,0 +1,133 @@
+<% const currency = user.currency; %>
+<form method="get" action="/reportes" class="card filter-grid">
+  <div class="field">
+    <label for="periodo">Periodo</label>
+    <select id="periodo" name="periodo" onchange="this.form.submit()">
+      <% periods.forEach(function (p) { %>
+        <option value="<%= p.id %>" <%= p.id === selected.id ? 'selected' : '' %>><%= p.label %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="filter-actions">
+    <a class="btn btn-ghost btn-sm" href="/exportar/movimientos.csv">Exportar CSV</a>
+  </div>
+</form>
+
+<!-- Tu dinero mes a mes -->
+<% const ev = evolution, ch = ev.chart, bc = ev.barChart; const short = function (v) { const a = Math.abs(v) / 100; return (v < 0 ? '−' : '') + '$' + (a >= 1e6 ? (a / 1e6).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' M' : a >= 1e3 ? Math.round(a / 1e3).toLocaleString('es-CO') + ' mil' : Math.round(a).toLocaleString('es-CO')); }; %>
+<section class="card">
+  <div class="card-head"><h2>Tu dinero mes a mes</h2></div>
+  <div class="evo-kpis">
+    <div><small class="muted">Patrimonio hoy</small><div class="pocket-amount"><%= formatMoney(ev.last.netWorth, currency) %></div><small class="muted">bancos y bolsillos menos tarjetas</small></div>
+    <div><small class="muted">Cambio en <%= ev.series.length %> meses</small><div class="pocket-amount <%= ev.change >= 0 ? 'text-success' : 'text-danger' %>"><%= ev.change >= 0 ? '+ ' : '− ' %><%= formatMoney(Math.abs(ev.change), currency) %></div></div>
+    <div><small class="muted">Ahorro promedio por mes</small><div class="pocket-amount <%= ev.avgSaving >= 0 ? '' : 'text-danger' %>"><%= ev.avgSaving < 0 ? '− ' : '' %><%= formatMoney(Math.abs(ev.avgSaving), currency) %></div></div>
+  </div>
+  <figure class="chart" aria-label="Patrimonio al cierre de cada mes">
+    <div class="chart-plot">
+    <span class="chart-end" style="left:<%= (ch.pts[ch.pts.length - 1].x / ch.width * 100).toFixed(2) %>%;top:<%= (ch.pts[ch.pts.length - 1].y / ch.height * 100).toFixed(2) %>%" aria-hidden="true"></span>
+    <svg viewBox="0 0 <%= ch.width %> <%= ch.height %>" role="img" preserveAspectRatio="none">
+      <title>Patrimonio: de <%= formatMoney(ev.first.netWorth, currency) %> a <%= formatMoney(ev.last.netWorth, currency) %></title>
+      <line class="chart-grid" x1="<%= ch.pad %>" x2="<%= ch.width - ch.pad %>" y1="<%= ch.pad %>" y2="<%= ch.pad %>"/>
+      <line class="chart-grid" x1="<%= ch.pad %>" x2="<%= ch.width - ch.pad %>" y1="<%= ch.pad + ch.innerH %>" y2="<%= ch.pad + ch.innerH %>"/>
+      <path class="chart-area" d="<%= ch.area %>"/>
+      <path class="chart-line" pathLength="1" d="<%= ch.line %>"/>
+
+    </svg>
+    </div>
+    <div class="chart-labels" style="--n:<%= ch.pts.length %>"><% ch.pts.forEach(function (p) { %><span><%= p.label %></span><% }) %></div>
+    <figcaption class="chart-scale"><span><%= short(ch.max) %></span><span><%= short(ch.min) %></span></figcaption>
+  </figure>
+
+  <h3 class="mt-1">Ingresos y gastos</h3>
+  <div class="chart-legend"><span><i class="sw" style="background:var(--monte)"></i>Ingresos</span><span><i class="sw" style="background:var(--ink-muted)"></i>Gastos</span></div>
+  <figure class="chart" aria-label="Ingresos y gastos por mes">
+    <svg viewBox="0 0 <%= bc.width %> <%= bc.height %>" role="img" preserveAspectRatio="none">
+      <line class="chart-grid" x1="<%= bc.pad %>" x2="<%= bc.width - bc.pad %>" y1="<%= bc.pad + bc.innerH %>" y2="<%= bc.pad + bc.innerH %>"/>
+      <% bc.bars.forEach(function (b) { %>
+        <rect class="bar-in" x="<%= (b.cx - b.barW - 1).toFixed(1) %>" y="<%= (bc.pad + bc.innerH - b.inH).toFixed(1) %>" width="<%= b.barW.toFixed(1) %>" height="<%= Math.max(0, b.inH).toFixed(1) %>" rx="3"><title><%= b.label %> · ingresos <%= formatMoney(b.income, currency) %></title></rect>
+        <rect class="bar-ex" x="<%= (b.cx + 1).toFixed(1) %>" y="<%= (bc.pad + bc.innerH - b.exH).toFixed(1) %>" width="<%= b.barW.toFixed(1) %>" height="<%= Math.max(0, b.exH).toFixed(1) %>" rx="3"><title><%= b.label %> · gastos <%= formatMoney(b.expenses, currency) %></title></rect>
+      <% }) %>
+    </svg>
+    <div class="chart-labels bars" style="--n:<%= bc.bars.length %>"><% bc.bars.forEach(function (b) { %><span><%= b.label %></span><% }) %></div>
+  </figure>
+  <details class="mt-1">
+    <summary class="link">Ver los datos</summary>
+    <div class="table-wrap mt-1"><table>
+      <thead><tr><th>Mes</th><th class="num">Ingresos</th><th class="num">Gastos</th><th class="num">Ahorro</th><th class="num">Patrimonio</th></tr></thead>
+      <tbody><% ev.series.slice().reverse().forEach(function (p) { %>
+        <tr><td><%= p.label %></td><td class="num"><%= formatMoney(p.income, currency) %></td><td class="num"><%= formatMoney(p.expenses, currency) %></td><td class="num <%= p.net < 0 ? 'text-danger' : 'text-success' %>"><%= p.net < 0 ? '− ' : '+ ' %><%= formatMoney(Math.abs(p.net), currency) %></td><td class="num"><%= formatMoney(p.netWorth, currency) %></td></tr>
+      <% }) %></tbody>
+    </table></div>
+  </details>
+</section>
+
+<!-- Gastos por categoría -->
+<section class="card">
+  <div class="card-head"><h2>Gastos por categoría · <%= selected.label %></h2></div>
+  <% if (!byCategory.length) { %><p class="muted">Sin gastos en este periodo.</p><% } %>
+  <div class="stack">
+    <% byCategory.forEach(function (c) { %>
+      <div>
+        <div class="flex-between">
+          <span><span class="dot" style="background:<%= c.color %>"></span> <%= c.name %></span>
+          <strong><%= formatMoney(c.total, currency) %></strong>
+        </div>
+        <div class="progress progress-sm">
+          <div class="progress-bar" style="width: <%= Math.round((c.total / maxCat) * 100) %>%; background:<%= c.color %>"></div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<!-- Ingresos por fuente -->
+<section class="card">
+  <div class="card-head"><h2>Ingresos por fuente</h2></div>
+  <% if (!bySource.length) { %><p class="muted">Sin ingresos en este periodo.</p><% } %>
+  <div class="stack">
+    <% bySource.forEach(function (s) { %>
+      <div class="flex-between">
+        <span><%= s.name %></span>
+        <strong class="text-success"><%= formatMoney(s.total, currency) %></strong>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<!-- Gastos por cuenta/bolsillo -->
+<section class="card">
+  <div class="card-head"><h2>De dónde salió el dinero</h2></div>
+  <% if (!byContainer.length) { %><p class="muted">Sin gastos en este periodo.</p><% } %>
+  <div class="stack">
+    <% byContainer.forEach(function (c) { %>
+      <div class="flex-between">
+        <span><%= c.name %></span>
+        <strong><%= formatMoney(c.total, currency) %></strong>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<!-- Comparación entre periodos -->
+<section class="card">
+  <div class="card-head"><h2>Comparación entre periodos</h2></div>
+  <% if (!comparison.length) { %><p class="muted">Aún no hay periodos para comparar.</p><% } %>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Periodo</th><th class="num">Ingresos</th><th class="num">Gastos</th><th class="num">Fijos pend.</th><th class="num">Presupuesto</th></tr>
+      </thead>
+      <tbody>
+        <% comparison.forEach(function (p) { %>
+          <tr class="<%= p.isCurrent ? 'row-highlight' : '' %>">
+            <td><%= p.label %></td>
+            <td class="num text-success"><%= formatMoney(p.income, currency) %></td>
+            <td class="num text-danger"><%= formatMoney(p.expenses, currency) %></td>
+            <td class="num"><%= formatMoney(p.pending, currency) %></td>
+            <td class="num"><%= formatMoney(p.budget, currency) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>

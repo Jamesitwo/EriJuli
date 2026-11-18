@@ -1,0 +1,16 @@
+<div class="card auth-card">
+  <h1>Contraseña nueva</h1>
+  <p class="muted">Elige una contraseña de al menos 8 caracteres. Al guardarla se cerrarán las sesiones abiertas en otros dispositivos.</p>
+  <form method="post" action="/restablecer/<%= token %>" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="password">Contraseña nueva</label>
+      <input id="password" type="password" name="password" required minlength="8" autocomplete="new-password" autofocus>
+    </div>
+    <div class="field">
+      <label for="password2">Repite la contraseña</label>
+      <input id="password2" type="password" name="password2" required minlength="8" autocomplete="new-password">
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Guardar contraseña</button>
+  </form>
+</div>

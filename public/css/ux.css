@@ -1,0 +1,114 @@
+/* ===== EriJuli · experiencia de uso =====
+   Confirmaciones, avisos, estados de carga, selector con tarjetas, saludo, movimiento suave. */
+
+/* Entrada suave de la página (desactivada si la persona pidió menos movimiento) */
+.ej-ready .content > *:not(.ej-toast) { animation: ej-rise .32s ease backwards; }
+.ej-ready .content > *:nth-child(2) { animation-delay: .03s; }
+.ej-ready .content > *:nth-child(3) { animation-delay: .06s; }
+.ej-ready .content > *:nth-child(n+4) { animation-delay: .09s; }
+@keyframes ej-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="on"]) *, :root:not([data-motion="on"]) *::before, :root:not([data-motion="on"]) *::after { animation: none !important; transition: none !important; } }
+
+/* Respuesta al tocar */
+a.tx-row, a.bank-row, a.pocket, .menu-list a, a.alert, .ej-pick { transition: background-color .15s ease, transform .08s ease, border-color .15s ease; -webkit-tap-highlight-color: transparent; }
+a.tx-row:hover, a.bank-row:hover { background: var(--surface-sunk); margin: 0 calc(-1 * var(--space-2)); padding-left: var(--space-2); padding-right: var(--space-2); border-radius: var(--radius-sm); }
+a.tx-row:active, a.bank-row:active, a.pocket:active, .menu-list a:active, a.alert:active, .ej-pick:active { transform: scale(.985); }
+a.pocket:hover { filter: brightness(.98); }
+.btn { transition: background-color .15s ease, filter .15s ease, transform .08s ease; }
+
+/* Saludo en Inicio */
+.topbar-greet { display: flex; flex-direction: column; min-width: 0; }
+.topbar-sub { font-size: .875rem; color: var(--ink-muted); font-weight: 500; }
+
+/* Saltar al contenido (teclado) */
+.skip-link { position: absolute; left: var(--space-3); top: -60px; z-index: 100; background: var(--monte); color: var(--on-monte); padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); font-weight: 600; }
+.skip-link:focus { top: var(--space-3); }
+
+/* ----- Avisos (flash) como notificación ----- */
+.ej-toast {
+  position: fixed; z-index: 80; left: 50%; transform: translateX(-50%);
+  top: calc(var(--space-3) + env(safe-area-inset-top));
+  width: min(560px, calc(100% - 2 * var(--space-4)));
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-radius: var(--radius-md); box-shadow: 0 12px 32px rgba(20,35,28,.18);
+  border: 1px solid currentColor; animation: ej-toast-in .25s ease both;
+}
+.ej-toast > span { flex: 1; }
+.ej-toast-x { width: 36px; height: 36px; flex: none; border: 0; border-radius: var(--radius-sm); background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; }
+.ej-toast-x:hover { background: rgba(127,127,127,.15); }
+.flash-success.ej-toast { background: var(--monte-soft); }
+.flash-error.ej-toast { background: var(--alerta-soft); }
+.flash-warning.ej-toast { background: var(--maiz-soft); }
+@keyframes ej-toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.auth-wrap .ej-toast { position: static; transform: none; width: 100%; max-width: 420px; animation: none; }
+
+/* ----- Ventana de confirmación ----- */
+.ej-dialog {
+  border: 0; padding: 0; margin: auto; width: min(420px, calc(100% - 2 * var(--space-4)));
+  background: var(--surface); color: var(--ink); border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgba(0,0,0,.3);
+}
+.ej-dialog::backdrop { background: rgba(10,18,14,.45); backdrop-filter: blur(2px); }
+.ej-dialog[open] { animation: ej-pop .18s ease both; }
+@keyframes ej-pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.ej-dialog form { padding: var(--space-5); display: grid; gap: var(--space-5); }
+.ej-dialog-msg { font-size: 1.0625rem; line-height: 1.5; }
+.ej-dialog-actions { display: flex; gap: var(--space-2); justify-content: flex-end; flex-wrap: wrap; }
+.btn-danger-solid { background: var(--alerta); border-color: var(--alerta); color: var(--surface); }
+@media (max-width: 480px) {
+  .ej-dialog { margin: auto auto 0; width: 100%; max-width: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .ej-dialog form { padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom)); }
+  .ej-dialog-actions { flex-direction: column-reverse; }
+  .ej-dialog-actions .btn { width: 100%; }
+}
+
+/* ----- Botón enviando ----- */
+.btn.is-loading { opacity: .85; cursor: progress; }
+.ej-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: ej-spin .7s linear infinite; }
+@keyframes ej-spin { to { transform: rotate(360deg); } }
+
+/* ----- Selector con tarjetas (cuenta/bolsillo, categoría) ----- */
+.ej-picker-src { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; opacity: 0; pointer-events: none; padding: 0 !important; border: 0 !important; }
+.field:has(> .ej-picker-src) { position: relative; }
+.ej-picker { display: flex; gap: var(--space-2); overflow-x: auto; padding: 2px 2px var(--space-1); margin: 0 -2px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.ej-picker::-webkit-scrollbar { display: none; }
+.ej-pick {
+  flex: none; min-width: 140px; max-width: 200px; scroll-snap-align: start;
+  display: grid; gap: 2px; text-align: left; font: inherit; cursor: pointer;
+  padding: var(--space-3); color: var(--ink);
+  background: var(--maiz-soft); border: 1.5px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-md) var(--radius-md);
+}
+.ej-pick.cuenta { background: var(--surface-sunk); }
+.ej-pick .n { font-size: .9375rem; font-weight: 600; line-height: 1.3; }
+.ej-pick .v { font-size: .8125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ej-pick:hover { border-color: var(--line-strong); }
+.ej-pick[aria-checked="true"] { border-color: var(--monte); background: var(--monte-soft); box-shadow: inset 0 0 0 1px var(--monte); }
+.ej-pick[aria-checked="true"] .v { color: var(--monte); }
+.ej-pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Variante en fichas (categorías) */
+.ej-picker.chips { flex-wrap: wrap; overflow: visible; }
+.ej-picker.chips .ej-pick {
+  min-width: 0; max-width: none; display: inline-flex; align-items: center; gap: var(--space-2);
+  min-height: 40px; padding: 0 var(--space-3); border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--line-strong);
+}
+.ej-picker.chips .ej-pick[aria-checked="true"] { background: var(--monte-soft); border-color: var(--monte); color: var(--monte); }
+.ej-pick-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pc, var(--line-strong)); flex: none; }
+.ej-picker.is-disabled { opacity: .45; pointer-events: none; }
+.ej-hint { font-size: .875rem; color: var(--ink-muted); margin-top: var(--space-1); min-height: 1.25rem; font-variant-numeric: tabular-nums; }
+.ej-hint.neg { color: var(--alerta); font-weight: 600; }
+
+/* ----- Sin conexión ----- */
+.ej-offline {
+  position: fixed; z-index: 70; left: var(--space-3); right: var(--space-3);
+  bottom: calc(var(--nav-h) + var(--space-3) + env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+  background: var(--ink); color: var(--paper); font-size: .875rem; font-weight: 600; box-shadow: var(--shadow-card);
+}
+.ej-offline[hidden] { display: none; }
+@media (min-width: 1024px) { .ej-offline { left: auto; right: var(--space-5); bottom: var(--space-5); max-width: 380px; } }
+
+/* ----- Estados vacíos ----- */
+.card > p.muted:only-child, .card > .card-head + p.muted { padding: var(--space-4) 0; }

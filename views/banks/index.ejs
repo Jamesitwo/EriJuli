@@ -1,0 +1,83 @@
+<% const currency = user.currency; %>
+<div class="hero hero-sm">
+  <div class="hero-label">Total general (cuenta + bolsillos)</div>
+  <div class="hero-amount"><%= formatMoney(total, currency) %></div>
+</div>
+
+<% banks.forEach(function (b) { %>
+  <section class="card">
+    <div class="card-head">
+      <h2><span class="dot" style="background:<%= b.color %>"></span> <%= b.name %></h2>
+      <strong><%= formatMoney(b.total, currency) %></strong>
+    </div>
+    <div class="stack">
+      <% b.containers.forEach(function (c) { %>
+        <div class="bank-row">
+          <span class="tx-icon <%= c.kind === 'cuenta' ? '' : 'pocket' %>"><%= c.kind === 'cuenta' ? '' : '' %></span>
+          <span class="bank-name"><%= c.name %><small class="muted"><%= c.purpose || (c.kind === 'cuenta' ? 'Dinero sin propósito' : 'Bolsillo') %></small></span>
+          <strong><%= formatMoney(c.balance, currency) %></strong>
+        </div>
+      <% }) %>
+    </div>
+    <a class="btn btn-ghost btn-block mt-1" href="/bancos/<%= b.id %>">Administrar <%= b.name %></a>
+  </section>
+<% }) %>
+
+<section class="card">
+  <h2>Agregar banco</h2>
+  <form method="post" action="/bancos" class="filter-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="bank-name">Nombre</label>
+      <input id="bank-name" name="name" required placeholder="Ej. Bancolombia">
+    </div>
+    <div class="field">
+      <label for="bank-color">Color</label>
+      <input id="bank-color" name="color" type="color" value="#0f5c45">
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">Agregar</button>
+    </div>
+  </form>
+  <p class="muted">También puedes registrar <strong>Efectivo</strong> como un banco aparte. Las tarjetas de crédito tienen su propia sección: <a href="/tarjetas">Tarjetas</a>.</p>
+</section>
+
+<section class="card">
+  <h2>Mover dinero</h2>
+  <p class="muted">Entre cuenta, bolsillos y bancos. Deja registro y <strong>no</strong> cuenta como ingreso ni gasto.</p>
+  <form method="post" action="/transferencias" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="back" value="/bancos">
+    <div class="field">
+      <label for="t-from">De</label>
+      <select id="t-from" name="container_from_id" required>
+        <% allContainers.forEach(function (c) { %>
+          <option value="<%= c.id %>"><%= c.bank_name %> · <%= c.name %> (<%= formatMoney(c.balance, currency) %>)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="t-to">A</label>
+      <select id="t-to" name="container_to_id" required>
+        <% allContainers.forEach(function (c, i) { %>
+          <option value="<%= c.id %>" <%= i === 1 ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="t-amount">Valor</label>
+        <input id="t-amount" name="amount" inputmode="decimal" required placeholder="0">
+      </div>
+      <div class="field">
+        <label for="t-date">Fecha</label>
+        <input id="t-date" name="date" type="date" value="<%= dates.todayISO() %>">
+      </div>
+    </div>
+    <div class="field">
+      <label for="t-desc">Descripción</label>
+      <input id="t-desc" name="description" placeholder="Ej. Separar para la moto">
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Mover dinero</button>
+  </form>
+</section>

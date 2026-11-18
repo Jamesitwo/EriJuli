@@ -1,0 +1,214 @@
+<% const currency = user.currency;
+   const left = budgetBase - spent - pending.total;
+   const over = left < 0;
+   const base = Math.max(budgetBase, spent + pending.total) || 1;
+   const pct = (v) => (Math.max(0, v) / base * 100).toFixed(2) + '%';
+   const goalByContainer = new Map(goals.filter((g) => g.container_id).map((g) => [g.container_id, g]));
+   const containers = banks.flatMap((b) => b.containers)
+     .sort((a, b) => (a.kind === b.kind ? b.balance - a.balance : a.kind === 'cuenta' ? -1 : 1));
+%>
+<div class="dash">
+  <div class="dash-col">
+    <!-- Resumen del periodo: gastado, fijos por pagar y libre -->
+    <section class="card" aria-labelledby="meter-label">
+      <div class="meter-top">
+        <div>
+          <div class="hero-label" id="meter-label"><%= over ? 'Te pasaste por' : 'Disponible en ' + period.label %></div>
+          <div class="hero-amount <%= over ? 'amount-over' : '' %>"><%= formatMoney(Math.abs(left), currency) %></div>
+        </div>
+        <div class="muted">de <strong style="color:var(--ink)"><%= formatMoney(budgetBase, currency) %></strong> presupuestados</div>
+      </div>
+      <div class="meter-bar" role="img" aria-label="Gastado <%= formatMoney(spent, currency) %>, fijos por pagar <%= formatMoney(pending.total, currency) %>, libre <%= formatMoney(Math.max(0, left), currency) %>">
+        <span class="seg-spent" style="width:<%= pct(spent) %>"></span>
+        <span class="seg-pend" style="width:<%= pct(pending.total) %>"></span>
+        <% if (over) { %><span class="seg-over" style="width:<%= pct(-left) %>"></span><% } %>
+      </div>
+      <dl class="legend">
+        <div><dt><i class="sw seg-spent"></i>Gastado</dt><dd><%= formatMoney(spent, currency) %></dd></div>
+        <div><dt><i class="sw seg-pend"></i>Fijos por pagar</dt><dd><%= formatMoney(pending.total, currency) %></dd></div>
+        <div><dt><i class="sw <%= over ? 'seg-over' : 'seg-free' %>"></i><%= over ? 'Excedido' : 'Libre' %></dt><dd class="<%= over ? 'amount-over' : '' %>"><%= formatMoney(Math.abs(left), currency) %></dd></div>
+      </dl>
+      <% if (budgetBase > 0) { %>
+      <p class="runway-line">
+        <svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>
+        <% if (run.free > 0) { %>
+          <span>Unos <strong class="num"><%= formatMoney(run.perDay, currency) %> por día</strong> durante <%= run.daysLeft %> <%= run.daysLeft === 1 ? 'día' : 'días' %> más<%= run.expectedPending > 0 ? ' · por recibir ' + formatMoney(run.expectedPending, currency) : '' %></span>
+        <% } else { %>
+          <span>No queda dinero libre hasta el <%= dates.formatDate(run.endDate, { year: false }) %>.</span>
+        <% } %>
+      </p>
+      <% } else { %>
+      <p class="runway-line"><span>Define tu presupuesto para ver cuánto puedes gastar por día.</span></p>
+      <% } %>
+      <div class="flex-between mt-1">
+        <a class="btn btn-quiet btn-sm" href="/presupuesto">Ver presupuesto</a>
+        <% if (pending.count > 0) { %><a class="btn btn-ghost btn-sm" href="/gastos-fijos">Pagar fijos (<%= pending.count %>)</a><% } %>
+      </div>
+    </section>
+
+    <% if (pendingInbox > 0) { %>
+      <a class="alert alert-info" href="/bandeja">
+        <span style="display:flex;gap:12px;align-items:center"><svg class="ic"><use href="#i-mail"/></svg><%= pendingInbox %> <%= pendingInbox === 1 ? 'movimiento del correo' : 'movimientos del correo' %> por revisar</span>
+        <svg class="ic ic-sm"><use href="#i-chev"/></svg>
+      </a>
+    <% } %>
+
+    <!-- Tu dinero: total y bolsillos -->
+    <div class="section-head"><h2>Tu dinero</h2><a href="/bancos">Bancos</a></div>
+    <div>
+      <div class="hero-label">Total en <%= banks.length === 1 ? banks[0].name : banks.length + ' bancos' %></div>
+      <div class="pocket-amount" style="font-size:1.75rem"><%= formatMoney(total, currency) %></div>
+      <% if (cardDebt > 0) { %><small class="muted">Menos tarjetas (<%= formatMoney(cardDebt, currency) %>): te quedan <strong style="color:var(--ink)"><%= formatMoney(total - cardDebt, currency) %></strong> netos</small><br><% } %>
+      <% if (monthNet !== 0) { %><small class="<%= monthNet > 0 ? 'text-success' : 'text-danger' %>"><%= monthNet > 0 ? '▲ Este mes ahorraste ' : '▼ Este mes gastaste ' + (monthNet < 0 ? 'más de lo que entró: ' : '') %><%= formatMoney(Math.abs(monthNet), currency) %></small><% } %>
+    </div>
+    <% if (!containers.length) { %>
+      <p class="muted">Aún no registras bancos. <a href="/bancos">Crea el primero</a>.</p>
+    <% } else { %>
+      <div class="pockets">
+        <% containers.forEach(function (c) { const g = goalByContainer.get(c.id); %>
+          <a class="pocket <%= c.kind === 'cuenta' ? 'cuenta' : '' %>" href="/bancos/<%= c.bank_id %>">
+            <div>
+              <div class="pocket-name"><%= c.name %></div>
+              <small class="muted"><%= c.bank_name %></small>
+            </div>
+            <div>
+              <div class="pocket-amount"><%= formatMoney(c.balance, currency) %></div>
+              <% if (g && g.target_amount > 0) { const p = Math.min(100, Math.round(c.balance / g.target_amount * 100)); %>
+                <div class="progress" role="img" aria-label="<%= p %>% de la meta"><div class="progress-bar" style="width:<%= p %>%"></div></div>
+                <small class="muted"><%= p %>% de <%= formatMoney(g.target_amount, currency) %></small>
+              <% } %>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <!-- Últimos movimientos -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Últimos movimientos</h2>
+        <a class="btn btn-ghost btn-sm" href="/movimientos">Ver todo</a>
+      </div>
+      <% if (!recent.length) { %>
+        <p class="muted">Sin movimientos todavía. <a href="/movimientos/nuevo">Registra el primero</a>.</p>
+      <% } %>
+      <div class="stack">
+        <% recent.forEach(function (t) { %>
+          <a class="tx-row" href="/movimientos/<%= t.id %>/editar">
+            <span class="tx-icon <%= t.kind %>"><%= t.kind === 'ingreso' ? '↓' : t.kind === 'gasto' ? '↑' : '⇄' %></span>
+            <span class="tx-info">
+              <strong><%= t.description %></strong>
+              <small class="muted"><%
+                if (t.kind === 'gasto') { %>de <%= t.from_name || 'sin cuenta' %><% }
+                else if (t.kind === 'transferencia' && t.card_id) { %>pago de tarjeta desde <%= t.from_name || '' %><% }
+                else if (t.kind === 'ingreso') { %>a <%= t.to_name || 'sin cuenta' %><% }
+                else { %><%= (t.from_name || '') + ' → ' + (t.to_name || '') %><% } %><%= t.split_count ? ' · dividido' : (t.category_name ? ' · ' + t.category_name : '') %></small>
+            </span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end">
+              <span class="tx-amount <%= t.kind %>"><%= t.kind === 'ingreso' ? '+ ' : t.kind === 'gasto' ? '− ' : '' %><%= formatMoney(t.amount, currency) %></span>
+              <small class="muted"><%= dates.formatDate(t.date) %></small>
+            </span>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  </div>
+
+  <div class="dash-col">
+    <!-- Alertas -->
+    <% if (alerts.length) { %>
+      <section class="stack">
+        <% alerts.forEach(function (a) { %>
+          <a class="alert alert-<%= a.type %>" href="<%= a.href %>">
+            <span><%= a.text %></span>
+            <svg class="ic ic-sm"><use href="#i-chev"/></svg>
+          </a>
+        <% }) %>
+      </section>
+    <% } %>
+
+    <!-- Tarjetas -->
+    <% if (cards.length) { %>
+    <section class="card">
+      <div class="card-head"><h2>Tarjetas</h2><a class="btn btn-ghost btn-sm" href="/tarjetas">Ver</a></div>
+      <div class="stack">
+        <% cards.forEach(function (c) { const st = c.status; %>
+          <a class="bank-row" href="/tarjetas/<%= c.id %>">
+            <span class="dot" style="background:<%= c.color %>;border-radius:3px"></span>
+            <span class="bank-name"><%= c.name %><small class="muted"><%= st.toPay > 0 ? 'Pagar ' + formatMoney(st.toPay, currency) + (st.daysToDue < 0 ? ' · vencido' : ' antes del ' + dates.formatDate(st.due, { year: false })) : 'Sin pago pendiente' %></small></span>
+            <strong class="num"><%= formatMoney(Math.max(0, st.debt), currency) %></strong>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- Topes -->
+    <% if (limits.length) { %>
+    <section class="card">
+      <div class="card-head"><h2>Topes</h2><a class="btn btn-ghost btn-sm" href="/presupuesto#topes">Ver</a></div>
+      <div class="stack">
+        <% limits.forEach(function (l) { %>
+          <div>
+            <div class="flex-between"><strong><%= l.name %></strong><small class="<%= l.state === 'over' ? 'text-danger' : 'muted' %>"><%= l.pct %> %</small></div>
+            <div class="progress progress-sm"><div class="progress-bar <%= l.state === 'over' ? 'danger' : l.state === 'near' ? 'warning' : '' %>" style="width:<%= Math.min(100, l.pct) %>%"></div></div>
+            <small class="muted"><%= formatMoney(l.spent, currency) %> de <%= formatMoney(l.limit, currency) %></small>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- El periodo en números -->
+    <section class="card">
+      <h2><%= period.label %> en números</h2>
+      <div class="stack" style="gap:0">
+        <div class="tx-row"><span class="tx-info"><strong>Ingresos</strong></span><span class="tx-amount ingreso">+ <%= formatMoney(income, currency) %></span></div>
+        <div class="tx-row"><span class="tx-info"><strong>Gastos</strong></span><span class="tx-amount gasto">− <%= formatMoney(totalExpenses, currency) %></span></div>
+        <div class="tx-row"><span class="tx-info"><strong>Fijos pendientes</strong><small class="muted"><%= pending.count %> <%= pending.count === 1 ? 'por pagar' : 'por pagar' %></small></span><span class="badge <%= pending.total > 0 ? 'badge-warning' : 'badge-success' %>"><%= pending.total > 0 ? formatMoney(pending.total, currency) : 'Al día' %></span></div>
+      </div>
+    </section>
+
+    <!-- Metas -->
+    <% if (goals.length) { %>
+    <section class="card">
+      <div class="card-head">
+        <h2>Metas</h2>
+        <a class="btn btn-ghost btn-sm" href="/metas">Ver todas</a>
+      </div>
+      <div class="stack">
+        <% goals.forEach(function (g) { %>
+          <% const pctGoal = g.target_amount > 0 ? Math.min(100, Math.round((g.saved / g.target_amount) * 100)) : 0; %>
+          <div>
+            <div class="flex-between">
+              <strong><%= g.name %></strong>
+              <small class="muted"><%= pctGoal %>%</small>
+            </div>
+            <div class="progress progress-sm"><div class="progress-bar goal" style="width: <%= pctGoal %>%"></div></div>
+            <small class="muted"><%= formatMoney(g.saved, currency) %> de <%= formatMoney(g.target_amount, currency) %></small>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- Bancos -->
+    <% if (banks.length) { %>
+    <section class="card">
+      <div class="card-head">
+        <h2>Bancos</h2>
+        <a class="btn btn-ghost btn-sm" href="/bancos">Administrar</a>
+      </div>
+      <div class="stack">
+        <% banks.forEach(function (b) { %>
+          <a class="bank-row" href="/bancos/<%= b.id %>">
+            <span class="dot" style="background:<%= b.color %>"></span>
+            <span class="bank-name"><%= b.name %><small class="muted"><%= b.containers.length %> <%= b.containers.length === 1 ? 'cuenta o bolsillo' : 'cuentas y bolsillos' %></small></span>
+            <strong class="num"><%= formatMoney(b.total, currency) %></strong>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+  </div>
+</div>

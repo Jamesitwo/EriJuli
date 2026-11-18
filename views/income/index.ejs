@@ -1,0 +1,131 @@
+<% const currency = user.currency; %>
+<div class="hero hero-sm">
+  <div class="hero-label">Ingresos de <%= period.label %></div>
+  <div class="hero-amount text-success"><%= formatMoney(total, currency) %></div>
+  <div class="hero-sub">Extra no contemplado: <%= formatMoney(extras, currency) %></div>
+</div>
+
+<!-- Registrar ingreso rápido -->
+<section class="card">
+  <h2>Registrar ingreso</h2>
+  <form method="post" action="/ingresos" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field-row">
+      <div class="field">
+        <label for="i-amount">Valor</label>
+        <input id="i-amount" name="amount" inputmode="decimal" required placeholder="0">
+      </div>
+      <div class="field">
+        <label for="i-date">Fecha</label>
+        <input id="i-date" name="date" type="date" value="<%= dates.todayISO() %>">
+      </div>
+    </div>
+    <div class="field">
+      <label for="i-source">Fuente</label>
+      <select id="i-source" name="income_source_id">
+        <option value="">Dinero extra (no contemplado)</option>
+        <% sources.forEach(function (s) { %>
+          <option value="<%= s.id %>"><%= s.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="i-container">Entra a</label>
+      <select id="i-container" name="container_to_id" required>
+        <% containers.forEach(function (c) { %>
+          <option value="<%= c.id %>"><%= c.bank_name %> · <%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="i-desc">Descripción</label>
+      <input id="i-desc" name="description" placeholder="Ej. Pago de quincena">
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Registrar ingreso</button>
+  </form>
+</section>
+
+<!-- Fuentes de ingreso -->
+<section class="card">
+  <h2>Fuentes de ingreso</h2>
+  <p class="muted">Define cuánto esperas recibir por fuente y compáralo con lo recibido.</p>
+  <div class="stack">
+    <% sources.forEach(function (s) { %>
+      <details class="source-item">
+        <summary>
+          <span><strong><%= s.name %></strong><small class="muted"><%= s.frequency %> · esperado <%= formatMoney(s.expected_amount, currency) %></small></span>
+          <span class="<%= s.received >= s.expected_amount && s.expected_amount > 0 ? 'text-success' : '' %>">
+            <%= formatMoney(s.received, currency) %> recibido
+          </span>
+        </summary>
+        <form method="post" action="/fuentes-ingreso/<%= s.id %>/editar" class="stack mt-1">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field-row">
+            <div class="field">
+              <label>Nombre</label>
+              <input name="name" value="<%= s.name %>">
+            </div>
+            <div class="field">
+              <label>Valor esperado</label>
+              <input name="expected_amount" inputmode="decimal" value="<%= (s.expected_amount / 100).toString().replace('.', ',') %>">
+            </div>
+          </div>
+          <div class="field">
+            <label>Frecuencia</label>
+            <select name="frequency">
+              <option value="mensual" <%= s.frequency === 'mensual' ? 'selected' : '' %>>Mensual</option>
+              <option value="quincenal" <%= s.frequency === 'quincenal' ? 'selected' : '' %>>Quincenal</option>
+              <option value="semanal" <%= s.frequency === 'semanal' ? 'selected' : '' %>>Semanal</option>
+              <option value="irregular" <%= s.frequency === 'irregular' ? 'selected' : '' %>>Irregular</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" type="submit">Guardar</button>
+        </form>
+      </details>
+    <% }) %>
+  </div>
+  <details class="mt-1">
+    <summary class="link">＋ Agregar fuente de ingreso</summary>
+    <form method="post" action="/fuentes-ingreso" class="stack mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="s-name">Nombre</label>
+        <input id="s-name" name="name" required placeholder="Ej. Pago James">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="s-expected">Valor esperado</label>
+          <input id="s-expected" name="expected_amount" inputmode="decimal" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="s-freq">Frecuencia</label>
+          <select id="s-freq" name="frequency">
+            <option value="mensual">Mensual</option>
+            <option value="quincenal">Quincenal</option>
+            <option value="semanal">Semanal</option>
+            <option value="irregular">Irregular</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Crear fuente</button>
+    </form>
+  </details>
+</section>
+
+<!-- Ingresos del periodo -->
+<section class="card">
+  <div class="card-head"><h2>Ingresos registrados</h2></div>
+  <% if (!incomes.length) { %><p class="muted">Aún no hay ingresos este periodo.</p><% } %>
+  <div class="stack">
+    <% incomes.forEach(function (t) { %>
+      <a class="tx-row" href="/movimientos/<%= t.id %>/editar">
+        <span class="tx-icon ingreso">↑</span>
+        <span class="tx-info">
+          <strong><%= t.description %></strong>
+          <small class="muted"><%= dates.formatDate(t.date) %> · <%= t.source_name || 'Extra' %> · <%= t.container_name %></small>
+        </span>
+        <span class="tx-amount ingreso">+<%= formatMoney(t.amount, currency) %></span>
+      </a>
+    <% }) %>
+  </div>
+</section>

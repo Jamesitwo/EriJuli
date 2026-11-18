@@ -1,0 +1,193 @@
+/* ===== EriJuli · controles de formulario =====
+   Listas desplegables, casillas, archivos, secciones plegables, calendario y selector de color.
+   Usa solo las variables de app.css, así que respeta el modo claro/oscuro. */
+
+/* Flecha de las listas: una por tema, porque una imagen de fondo no hereda el color del texto */
+:root { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a6560' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E"); }
+:root[data-theme="dark"] { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3afa8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E"); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3afa8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E"); }
+}
+
+/* Todos los campos, estén o no dentro de .field */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+select, textarea {
+  font: inherit; font-size: 1rem; color: var(--ink);
+  background-color: var(--surface);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  min-height: 48px; padding: 0 var(--space-3);
+}
+textarea { padding: var(--space-3); line-height: 1.5; resize: vertical; }
+input::placeholder, textarea::placeholder { color: var(--ink-muted); opacity: .8; }
+input:disabled, select:disabled, textarea:disabled { background-color: var(--surface-sunk); color: var(--ink-muted); cursor: not-allowed; }
+input:hover:not(:disabled):not(:focus), select:hover:not(:disabled):not(:focus), textarea:hover:not(:disabled):not(:focus) { border-color: var(--ink-muted); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-color: var(--line-strong); }
+input:user-invalid, select:user-invalid, textarea:user-invalid { border-color: var(--alerta); }
+
+/* Números sin flechitas */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; font-variant-numeric: tabular-nums; }
+input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ----- Listas desplegables ----- */
+select {
+  -webkit-appearance: none; appearance: none;
+  padding-right: 44px; cursor: pointer;
+  background-image: var(--chev); background-repeat: no-repeat;
+  background-position: right 12px center; background-size: 20px;
+  text-overflow: ellipsis;
+}
+select::-ms-expand { display: none; }
+select option { background: var(--surface); color: var(--ink); }
+
+/* Navegadores que permiten estilizar también la lista abierta (Chrome/Edge recientes) */
+@supports (appearance: base-select) {
+  select { appearance: base-select; display: flex; align-items: center; background-image: none; padding-right: var(--space-3); }
+  select::picker-icon {
+    content: ""; width: 20px; height: 20px; margin-left: auto; flex: none;
+    background: var(--chev) center / 20px no-repeat; transition: transform .15s ease;
+  }
+  select:open::picker-icon { transform: rotate(180deg); }
+  select::picker(select) {
+    appearance: base-select;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(20,35,28,.18);
+    padding: var(--space-1); margin-top: var(--space-1);
+    max-height: min(360px, 60vh);
+  }
+  select option {
+    display: flex; align-items: center; gap: var(--space-2);
+    min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-sm);
+    font-size: 1rem; background: transparent; cursor: pointer;
+  }
+  select option:hover, select option:focus-visible { background: var(--surface-sunk); outline: none; }
+  select option:checked { background: var(--monte-soft); color: var(--monte); font-weight: 600; }
+  select option::checkmark { content: ""; width: 18px; height: 18px; order: 1; margin-left: auto;
+    background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/18px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/18px no-repeat; }
+  select option:disabled { color: var(--ink-muted); cursor: default; }
+  select optgroup { font-weight: 600; color: var(--ink-muted); font-size: .8125rem; padding: var(--space-2) var(--space-3) 0; }
+  select selectedcontent { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* ----- Casillas y opciones ----- */
+input[type="checkbox"], input[type="radio"] {
+  -webkit-appearance: none; appearance: none; flex: none;
+  width: 22px; height: 22px; margin: 0;
+  border: 2px solid var(--line-strong); background: var(--surface);
+  display: inline-grid; place-items: center; cursor: pointer; vertical-align: middle;
+}
+input[type="checkbox"] { border-radius: 6px; }
+input[type="radio"] { border-radius: 50%; }
+input[type="checkbox"]::after {
+  content: ""; width: 12px; height: 7px; margin-top: -3px;
+  border: solid var(--on-monte); border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg) scale(0);
+  transition: transform .12s ease;
+}
+input[type="radio"]::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--on-monte); transform: scale(0); transition: transform .12s ease; }
+input[type="checkbox"]:checked, input[type="radio"]:checked { background: var(--monte); border-color: var(--monte); }
+input[type="checkbox"]:checked::after { transform: rotate(-45deg) scale(1); }
+input[type="radio"]:checked::after { transform: scale(1); }
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.check { cursor: pointer; line-height: 1.4; }
+.check input { width: 22px; height: 22px; }
+
+/* ----- Archivo (importar CSV) ----- */
+input[type="file"] {
+  width: 100%; font: inherit; font-size: .9375rem; color: var(--ink-muted);
+  padding: var(--space-3); border: 1.5px dashed var(--line-strong); border-radius: var(--radius-md);
+  background: var(--surface-sunk); cursor: pointer;
+}
+input[type="file"]::file-selector-button {
+  font: inherit; font-weight: 600; font-size: .875rem; margin-right: var(--space-3);
+  min-height: 36px; padding: 0 var(--space-4); border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer;
+}
+input[type="file"]:hover::file-selector-button { background: var(--paper); }
+
+/* ----- Secciones plegables (<details>) ----- */
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary.link, details > summary:not([class]) {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px; color: var(--monte); font-weight: 600;
+}
+details > summary.link::before, details > summary:not([class])::before,
+.fixed-item > summary::after, .source-item > summary::after {
+  content: ""; width: 18px; height: 18px; flex: none;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 6l6 6-6 6'/%3E%3C/svg%3E") center/18px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 6l6 6-6 6'/%3E%3C/svg%3E") center/18px no-repeat;
+  transition: transform .15s ease;
+}
+details[open] > summary.link::before, details[open] > summary:not([class])::before { transform: rotate(90deg); }
+.fixed-item > summary::after, .source-item > summary::after { color: var(--ink-muted); transform: rotate(90deg); }
+.fixed-item[open] > summary::after, .source-item[open] > summary::after { transform: rotate(-90deg); }
+.fixed-item[open], .source-item[open] { border-color: var(--line-strong); }
+.fixed-item[open] > summary, .source-item[open] > summary { padding-bottom: var(--space-3); margin-bottom: var(--space-3); border-bottom: 1px solid var(--line); }
+
+/* ----- Ventanas emergentes propias (calendario y color) ----- */
+.ej-pop { position: relative; width: 100%; }
+.ej-trigger {
+  width: 100%; min-height: 48px; padding: 0 var(--space-3);
+  display: flex; align-items: center; gap: var(--space-2);
+  font: inherit; font-size: 1rem; text-align: left; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); cursor: pointer;
+}
+.ej-trigger:hover { border-color: var(--ink-muted); }
+.ej-trigger[aria-expanded="true"] { border-color: var(--monte); box-shadow: 0 0 0 1px var(--monte); }
+.ej-trigger .ic { color: var(--ink-muted); }
+.ej-trigger.invalid { border-color: var(--alerta); }
+.ej-trigger:disabled { background: var(--surface-sunk); color: var(--ink-muted); cursor: not-allowed; }
+.ej-ph { color: var(--ink-muted); }
+.ej-panel {
+  position: absolute; z-index: 50; top: calc(100% + 6px); left: 0;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgba(20,35,28,.2);
+  padding: var(--space-3);
+}
+.ej-panel.end { left: auto; right: 0; }
+.ej-panel.up { top: auto; bottom: calc(100% + 6px); }
+.ej-icon-btn { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 0; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.ej-icon-btn:hover { background: var(--surface-sunk); }
+
+/* Calendario */
+.ej-cal { width: 312px; }
+.ej-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
+.ej-cal-head strong { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 600; }
+.ej-cal-week, .ej-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.ej-cal-week span { font-size: .75rem; font-weight: 600; color: var(--ink-muted); padding: var(--space-1) 0; }
+.ej-cal-grid button {
+  height: 40px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink);
+  font: inherit; font-size: .9375rem; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.ej-cal-grid button:hover { background: var(--surface-sunk); }
+.ej-cal-grid button.today { box-shadow: inset 0 0 0 1.5px var(--monte); color: var(--monte); font-weight: 600; }
+.ej-cal-grid button.sel { background: var(--monte); color: var(--on-monte); font-weight: 600; box-shadow: none; }
+.ej-cal-foot { display: flex; justify-content: space-between; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--line); }
+
+/* Selector de color */
+.ej-native-color { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.ej-dot { width: 24px; height: 24px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.ej-color.compact { width: auto; }
+.ej-color.compact .ej-trigger { width: 48px; justify-content: center; padding: 0; }
+.ej-swatches { width: 232px; }
+.ej-sw-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-2); }
+.ej-sw {
+  width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--c); cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); position: relative;
+}
+.ej-sw[aria-checked="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.ej-sw[aria-checked="true"]::after {
+  content: ""; position: absolute; inset: 0; margin: auto; width: 14px; height: 8px; margin-top: 15px;
+  border: solid #fff; border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg);
+}
+.ej-custom { width: 100%; }
+
+/* En celular el calendario se abre a lo ancho de la pantalla */
+@media (max-width: 420px) {
+  .ej-cal { position: fixed; left: var(--space-3) !important; right: var(--space-3) !important; top: auto !important; bottom: calc(var(--space-3) + env(safe-area-inset-bottom)) !important; width: auto; z-index: 60; box-shadow: var(--shadow-sheet); }
+  .ej-cal-grid button { height: 44px; }
+}
+
+/* La tarjeta con un calendario o paleta abiertos queda por encima de las siguientes */
+:where(.card, section, .proposal, .fixed-item, details, form):has(> * .ej-panel:not([hidden]), .ej-panel:not([hidden])) { position: relative; z-index: 40; }

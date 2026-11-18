@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Datos personales: base de datos, respaldos y fotos de recibos (nunca al repositorio)
+data/
+uploads/
+*.db
+*.db-shm
+*.db-wal
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Copias de trabajo y pruebas locales
+_diseno_anterior/
+
+# Sistema y editores
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

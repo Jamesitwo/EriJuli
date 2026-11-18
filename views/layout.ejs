@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<% const themePref = (typeof user !== 'undefined' && user && user.theme) || 'auto'; %>
+<% const motionPref = (typeof user !== 'undefined' && user && user.motion) || 'auto'; %>
+<html lang="es"<%- themePref === 'claro' ? ' data-theme="light"' : themePref === 'oscuro' ? ' data-theme="dark"' : '' %><%- motionPref === 'si' ? ' data-motion="on"' : motionPref === 'no' ? ' data-motion="off"' : '' %>>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<% if (themePref === 'claro') { %>
+  <meta name="theme-color" content="#f6f3ec">
+<% } else if (themePref === 'oscuro') { %>
+  <meta name="theme-color" content="#111915">
+<% } else { %>
+  <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111915" media="(prefers-color-scheme: dark)">
+<% } %>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="<%= appName %>">
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %><%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/css/app.css?v=7">
+  <link rel="stylesheet" href="/css/controles.css?v=7">
+  <link rel="stylesheet" href="/css/ux.css?v=12">
+  <link rel="stylesheet" href="/css/features.css?v=14">
+<% if (motionPref === 'si') { %>
+  <style>@view-transition { navigation: auto; }</style>
+<% } else if (motionPref !== 'no') { %>
+  <style>@media (prefers-reduced-motion: no-preference) { @view-transition { navigation: auto; } }</style>
+<% } %>
+  <link rel="stylesheet" href="/css/animaciones.css?v=12">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<!-- Íconos de trazo (24px, trazo 1.75) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5 M6.5 9.5V20h11V9.5"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4v16 M3.5 16.5L7 20l3.5-3.5 M17 20V4 M13.5 7.5L17 4l3.5 3.5"/></symbol>
+  <symbol id="i-in" viewBox="0 0 24 24"><path d="M12 5v14 M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4.5 6h15v14h-15z M4.5 10h15 M8.5 3.5v4 M15.5 3.5v4"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 1 0 17a8.5 8.5 0 0 1 0-17z M12 8a4 4 0 1 1 0 8a4 4 0 0 1 0-8z"/></symbol>
+  <symbol id="i-pocket" viewBox="0 0 24 24"><path d="M5 5h14v7a7 7 0 0 1-14 0z M9 9h6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4l2.4 5 5.4.7-4 3.7 1 5.4L12 16.2 7.2 18.8l1-5.4-4-3.7 5.4-.7z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M4 14h4l3 2h4.5a1.5 1.5 0 0 0 0-3H12 M8 18l2 1.5h6l4.5-4.5a1.5 1.5 0 0 0-2.1-2.1L15.5 15 M15 4.5a2.5 2.5 0 1 1 0 5a2.5 2.5 0 0 1 0-5z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 19V11 M10 19V5 M15 19v-6 M20 19V8"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13l2.5-7.5h11L20 13v6H4z M4 13h4.5l1 2.5h5l1-2.5H20"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20.5H7z M14 3.5v4h4 M10 13h5 M10 16.5h5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 1 0 17a8.5 8.5 0 0 1 0-17z M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 9a3 3 0 1 1 0 6a3 3 0 0 1 0-6z M12 3v2.5 M12 18.5V21 M3 12h2.5 M18.5 12H21 M5.6 5.6l1.8 1.8 M16.6 16.6l1.8 1.8 M5.6 18.4l1.8-1.8 M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14 M5 12h14"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16 M4 12h16 M4 17h16"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3.5 6.5h17v11h-17z M3.5 7l8.5 6.5L20.5 7"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><path d="M3.5 6.5h17v11h-17z M3.5 10h17 M7 14.5h3"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M9 11a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7z M2.5 20a6.5 6.5 0 0 1 13 0 M16 4.5a3.5 3.5 0 0 1 0 6.5 M18 14a6 6 0 0 1 3.5 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><path d="M5.5 10.5h13v10h-13z M8.5 10.5V7a3.5 3.5 0 0 1 7 0v3.5"/></symbol>
+  <symbol id="i-finger" viewBox="0 0 24 24"><path d="M7.5 5.5A7 7 0 0 1 19 11v1.5 M5 9a7 7 0 0 0-.5 2.5V14 M12 8.5a3 3 0 0 1 3 3v2.5a8 8 0 0 1-1.5 5 M9 11.5a3 3 0 0 1 .4-1.5 M9 14v.5a10 10 0 0 1-1.5 5 M12 12v2.5a11 11 0 0 1-2 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6z M12 9.5l5 5 M17 9.5l-5 5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3.5L9 5.5h6L16.5 8H20v11H4z M12 10.5a3.25 3.25 0 1 1 0 6.5a3.25 3.25 0 0 1 0-6.5z"/></symbol>
+</svg>
+<% const inbox = typeof inboxCount !== 'undefined' ? inboxCount : 0; %>
+<% if (typeof user !== 'undefined' && user && !(typeof locked !== 'undefined' && locked)) { %>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <div class="app-shell">
+    <!-- Barra lateral (computador) -->
+    <aside class="sidebar">
+      <div class="brand"><%= appName %></div>
+      <a class="btn btn-primary btn-block side-new" href="/movimientos/nuevo"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Registrar</a>
+      <nav class="side-nav" aria-label="Principal">
+        <a href="/" class="<%= currentPath === '/' ? 'active' : '' %>"><svg class="ic"><use href="#i-home"/></svg>Inicio</a>
+        <a href="/movimientos" class="<%= currentPath.startsWith('/movimientos') ? 'active' : '' %>"><svg class="ic"><use href="#i-swap"/></svg>Movimientos</a>
+        <a href="/bandeja" class="<%= currentPath.startsWith('/bandeja') ? 'active' : '' %>"><svg class="ic"><use href="#i-inbox"/></svg>Bandeja<% if (inbox > 0) { %><span class="bn-count"><%= inbox %></span><% } %></a>
+        <a href="/bancos" class="<%= currentPath.startsWith('/bancos') ? 'active' : '' %>"><svg class="ic"><use href="#i-pocket"/></svg>Bancos y bolsillos</a>
+        <a href="/tarjetas" class="<%= currentPath.startsWith('/tarjetas') ? 'active' : '' %>"><svg class="ic"><use href="#i-card"/></svg>Tarjetas</a>
+        <a href="/presupuesto" class="<%= currentPath.startsWith('/presupuesto') ? 'active' : '' %>"><svg class="ic"><use href="#i-target"/></svg>Presupuesto</a>
+        <a href="/gastos-fijos" class="<%= currentPath.startsWith('/gastos-fijos') ? 'active' : '' %>"><svg class="ic"><use href="#i-cal"/></svg>Gastos fijos</a>
+        <a href="/ingresos" class="<%= currentPath.startsWith('/ingresos') ? 'active' : '' %>"><svg class="ic"><use href="#i-in"/></svg>Ingresos</a>
+        <a href="/metas" class="<%= currentPath.startsWith('/metas') ? 'active' : '' %>"><svg class="ic"><use href="#i-star"/></svg>Metas</a>
+        <a href="/prestamos" class="<%= currentPath.startsWith('/prestamos') ? 'active' : '' %>"><svg class="ic"><use href="#i-hand"/></svg>Préstamos</a>
+        <a href="/hogar" class="<%= currentPath.startsWith('/hogar') ? 'active' : '' %>"><svg class="ic"><use href="#i-users"/></svg>Hogar</a>
+        <a href="/reportes" class="<%= currentPath.startsWith('/reportes') ? 'active' : '' %>"><svg class="ic"><use href="#i-chart"/></svg>Reportes</a>
+        <a href="/importar-exportar" class="<%= currentPath.startsWith('/importar') ? 'active' : '' %>"><svg class="ic"><use href="#i-file"/></svg>Importar / exportar</a>
+        <a href="/historial" class="<%= currentPath.startsWith('/historial') ? 'active' : '' %>"><svg class="ic"><use href="#i-clock"/></svg>Historial</a>
+        <a href="/seguridad" class="<%= currentPath.startsWith('/seguridad') ? 'active' : '' %>"><svg class="ic"><use href="#i-lock"/></svg>Seguridad</a>
+        <a href="/configuracion" class="<%= currentPath.startsWith('/configuracion') ? 'active' : '' %>"><svg class="ic"><use href="#i-gear"/></svg>Configuración</a>
+      </nav>
+      <form action="/logout" method="post" class="side-logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-ghost btn-block btn-sm" type="submit">Cerrar sesión</button>
+      </form>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-greet">
+          <h1 class="topbar-title"><%= typeof heading !== 'undefined' ? heading : (typeof title !== 'undefined' ? title : appName) %></h1>
+          <% if (typeof subheading !== 'undefined') { %><span class="topbar-sub"><%= subheading %></span><% } %>
+        </div>
+        <a href="/configuracion" class="avatar" title="<%= user.name || user.email %>"><%= (user.name || user.email).charAt(0).toUpperCase() %></a>
+      </header>
+
+      <main class="content" id="contenido" tabindex="-1">
+        <% if (flash) { %>
+          <div class="flash flash-<%= flash.type %>" role="status"><%= flash.text %></div>
+        <% } %>
+        <%- body %>
+      </main>
+
+      <!-- Barra inferior (celular y tableta) -->
+      <nav class="bottom-nav" aria-label="Principal">
+        <a href="/" class="<%= currentPath === '/' ? 'active' : '' %>" <%- currentPath === '/' ? 'aria-current="page"' : '' %>><span class="bn-icon"><svg class="ic"><use href="#i-home"/></svg></span><span>Inicio</span></a>
+        <a href="/movimientos" class="<%= currentPath.startsWith('/movimientos') && currentPath !== '/movimientos/nuevo' ? 'active' : '' %>"><span class="bn-icon"><svg class="ic"><use href="#i-swap"/></svg></span><span>Movimientos</span></a>
+        <a href="/movimientos/nuevo" class="bn-fab" aria-label="Registrar movimiento"><svg class="ic"><use href="#i-plus"/></svg></a>
+        <a href="/bandeja" class="<%= currentPath.startsWith('/bandeja') ? 'active' : '' %>"><span class="bn-icon"><svg class="ic"><use href="#i-inbox"/></svg></span><span>Bandeja</span><% if (inbox > 0) { %><span class="bn-count"><%= inbox %></span><% } %></a>
+        <a href="/mas" class="<%= currentPath === '/mas' ? 'active' : '' %>"><span class="bn-icon"><svg class="ic"><use href="#i-menu"/></svg></span><span>Más</span></a>
+      </nav>
+    </div>
+  </div>
+<% } else { %>
+  <main class="auth-wrap">
+    <div class="auth-brand"><%= appName %></div>
+    <p class="auth-tag">Cada peso en su bolsillo.</p>
+    <% if (flash) { %>
+      <div class="flash flash-<%= flash.type %>" role="status"><%= flash.text %></div>
+    <% } %>
+    <%- body %>
+  </main>
+<% } %>
+<script src="/js/controles.js?v=7"></script>
+<script src="/js/ux.js?v=13"></script>
+<script src="/js/features.js?v=7"></script>
+<script src="/js/animaciones.js?v=12"></script>
+<script src="/js/app.js?v=7"></script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<% const currency = user.currency; %>
+<div class="hero">
+  <div class="hero-label">Disponible en <%= selected.label %></div>
+  <div class="hero-amount <%= summary.available < 0 ? 'text-danger' : '' %>"><%= formatMoney(summary.available, currency) %></div>
+  <div class="hero-sub">
+    Presupuesto <%= formatMoney(selected.budget_amount, currency) %>
+    <% if (selected.rollover_amount > 0) { %> + arrastre <%= formatMoney(selected.rollover_amount, currency) %><% } %>
+  </div>
+</div>
+
+<% if (run) { %>
+<section class="card runway">
+  <div class="runway-main">
+    <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>
+    <div>
+      <% if (run.free > 0) { %>
+        <strong>Te quedan <%= formatMoney(run.free, currency) %> para <%= run.daysLeft %> <%= run.daysLeft === 1 ? 'día' : 'días' %></strong>
+        <div class="muted">Unos <strong class="num" style="color:var(--ink)"><%= formatMoney(run.perDay, currency) %> por día</strong> hasta el <%= dates.formatDate(run.endDate, { year: false }) %>, ya descontando los fijos por pagar.</div>
+      <% } else { %>
+        <strong class="text-danger">No queda dinero libre en este periodo</strong>
+        <div class="muted">Los gastos y los fijos por pagar ya superan el presupuesto.</div>
+      <% } %>
+      <% if (run.expectedPending > 0) { %><div class="muted mt-1">Por recibir (según tus fuentes de ingreso): <strong class="text-success"><%= formatMoney(run.expectedPending, currency) %></strong></div><% } %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- Barra de consumo -->
+<section class="card">
+  <% const pct = summary.base > 0 ? Math.min(100, Math.round((summary.spent / summary.base) * 100)) : 0; %>
+  <div class="progress">
+    <div class="progress-bar <%= pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : '' %>" style="width: <%= pct %>%"></div>
+  </div>
+  <div class="flex-between muted">
+    <span>Gastado: <strong><%= formatMoney(summary.spent, currency) %></strong></span>
+    <span><%= pct %>% del presupuesto</span>
+  </div>
+  <div class="summary-grid mt-1">
+    <div><small class="muted">Ingresos del periodo</small><div class="text-success"><strong><%= formatMoney(summary.income, currency) %></strong></div></div>
+    <div><small class="muted">Gastos totales (incluye extra)</small><div class="text-danger"><strong><%= formatMoney(summary.totalExpenses, currency) %></strong></div></div>
+    <div><small class="muted">Fijos pendientes</small><div><strong><%= formatMoney(summary.pending.total, currency) %></strong></div></div>
+  </div>
+  <details class="mt-1">
+    <summary class="link">¿Cómo se calcula?</summary>
+    <p class="muted mt-1">
+      Disponible = presupuesto + arrastre − gastos <%= user.budget_includes_fixed ? '(fijos + variables)' : '(variables)' %>.
+      Los gastos <strong>extra</strong> salen de tus bolsillos y aparecen en "Gastos totales" pero no consumen el presupuesto.
+      Puedes cambiar esta regla en <a href="/configuracion">Configuración</a>.
+    </p>
+  </details>
+</section>
+
+<!-- Topes por categoría -->
+<section class="card" id="topes">
+  <div class="card-head"><h2>Topes por categoría</h2></div>
+  <% if (!limits.length) { %>
+    <p class="muted">Ponle un máximo a las categorías donde más se te va el dinero (por ejemplo, salidas o domicilios). Te avisamos al llegar al 80 %.</p>
+  <% } %>
+  <div class="stack">
+    <% limits.forEach(function (l) { const w = Math.min(100, l.pct); %>
+      <div class="limit-row">
+        <div class="flex-between">
+          <span class="limit-name"><span class="dot" style="background:<%= l.color %>"></span><%= l.name %></span>
+          <span class="num"><strong><%= formatMoney(l.spent, currency) %></strong> <span class="muted">de <%= formatMoney(l.limit, currency) %></span></span>
+        </div>
+        <div class="progress progress-sm" role="img" aria-label="<%= l.pct %>% del tope"><div class="progress-bar <%= l.state === 'over' ? 'danger' : l.state === 'near' ? 'warning' : '' %>" style="width:<%= w %>%"></div></div>
+        <small class="<%= l.state === 'over' ? 'text-danger' : 'muted' %>"><%= l.state === 'over' ? 'Te pasaste por ' + formatMoney(-l.left, currency) : 'Quedan ' + formatMoney(l.left, currency) + ' · ' + l.pct + ' %' %></small>
+      </div>
+    <% }) %>
+  </div>
+  <details class="mt-1" <%= limits.length ? '' : 'open' %>>
+    <summary class="link"><%= limits.length ? 'Agregar o cambiar un tope' : 'Agregar tope' %></summary>
+    <form method="post" action="/presupuesto/topes" class="filter-grid mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="lim-cat">Categoría</label>
+        <select id="lim-cat" name="category_id" required>
+          <option value="">Elige…</option>
+          <% expenseCategories.forEach(function (c) { const cur = limits.find(function (l) { return l.category_id === c.id; }); %>
+            <option value="<%= c.id %>"><%= c.name %><%= cur ? ' (hoy ' + formatMoney(cur.limit, currency) + ')' : '' %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="field">
+        <label for="lim-amount">Máximo por periodo</label>
+        <input id="lim-amount" name="amount" inputmode="decimal" placeholder="0" required>
+      </div>
+      <div class="filter-actions"><button class="btn btn-primary" type="submit">Guardar tope</button></div>
+    </form>
+    <small class="muted">Para quitar un tope, guárdalo en 0.</small>
+  </details>
+</section>
+
+<!-- Editar presupuesto -->
+<section class="card">
+  <h2>Presupuesto del periodo</h2>
+  <form method="post" action="/presupuesto" class="filter-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="period_id" value="<%= selected.id %>">
+    <div class="field">
+      <label for="budget_amount">Monto (<%= currency %>)</label>
+      <input id="budget_amount" name="budget_amount" inputmode="decimal" value="<%= (selected.budget_amount / 100).toString().replace('.', ',') %>">
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">Guardar</button>
+    </div>
+  </form>
+  <% if (suggestion > 0) { %>
+    <div class="alert alert-info mt-1">
+      <span>Sugerencia: <strong><%= formatMoney(suggestion, currency) %></strong> (ingresos esperados − gastos fijos − aportes a metas)</span>
+      <button class="btn btn-ghost btn-sm" type="button"
+        onclick="document.getElementById('budget_amount').value='<%= (suggestion / 100).toString().replace('.', ',') %>'">Usar</button>
+    </div>
+  <% } %>
+</section>
+
+<!-- Selector de periodo + cerrar -->
+<section class="card">
+  <form method="get" action="/presupuesto" class="filter-grid">
+    <div class="field">
+      <label for="periodo">Ver periodo</label>
+      <select id="periodo" name="periodo" onchange="this.form.submit()">
+        <% periods.forEach(function (p) { %>
+          <option value="<%= p.id %>" <%= p.id === selected.id ? 'selected' : '' %>><%= p.label %> <%= p.status === 'cerrado' ? '(cerrado)' : '' %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="filter-actions">
+      <% if (selected.status === 'abierto') { %>
+        <button class="btn btn-ghost btn-sm" type="submit">Ver periodo</button>
+      <% } %>
+    </div>
+  </form>
+  <% if (selected.status === 'abierto') { %>
+    <form method="post" action="/presupuesto/<%= selected.id %>/cerrar" class="mt-1"
+          onsubmit="return confirm('¿Cerrar este periodo y abrir el siguiente? Los gastos fijos se precargan solos.');">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-ghost btn-block" type="submit">Cerrar <%= selected.label %> y abrir el siguiente</button>
+    </form>
+  <% } %>
+</section>
+<!-- Detalle -->
+<section class="card">
+  <div class="card-head"><h2>Gastos que salen del presupuesto</h2></div>
+  <% if (!detail.length) { %><p class="muted">Sin gastos en este periodo.</p><% } %>
+  <div class="stack">
+    <% detail.forEach(function (t) { %>
+      <a class="tx-row" href="/movimientos/<%= t.id %>/editar">
+        <span class="tx-icon gasto">↑</span>
+        <span class="tx-info">
+          <strong><%= t.description %></strong>
+          <small class="muted"><%= dates.formatDate(t.date) %> · <%= t.split_count ? 'Dividido en ' + t.split_count : (t.category_name || 'Sin categoría') %> · <%= t.from_name || '' %></small>
+        </span>
+        <span class="tx-amount gasto">− <%= formatMoney(t.amount, currency) %></span>
+      </a>
+    <% }) %>
+  </div>
+</section>
+
+<% if (extraDetail.length) { %>
+<section class="card">
+  <div class="card-head"><h2>Gastos extra (de bolsillos)</h2></div>
+  <div class="stack">
+    <% extraDetail.forEach(function (t) { %>
+      <a class="tx-row" href="/movimientos/<%= t.id %>/editar">
+        <span class="tx-icon gasto">↑</span>
+        <span class="tx-info">
+          <strong><%= t.description %></strong>
+          <small class="muted"><%= dates.formatDate(t.date) %> · <%= t.split_count ? 'Dividido en ' + t.split_count : (t.category_name || 'Sin categoría') %> · <%= t.from_name || '' %></small>
+        </span>
+        <span class="tx-amount gasto">− <%= formatMoney(t.amount, currency) %></span>
+      </a>
+    <% }) %>
+  </div>
+</section>
+<% } %>

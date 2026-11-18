@@ -1,0 +1,44 @@
+<% const currency = user.currency; const totalDebt = cards.reduce(function (s, c) { return s + Math.max(0, c.status.debt); }, 0); const totalToPay = cards.reduce(function (s, c) { return s + c.status.toPay; }, 0); %>
+<% if (cards.length) { %>
+<section class="hero hero-sm">
+  <div class="hero-label">Deuda total en tarjetas</div>
+  <div class="hero-amount"><%= formatMoney(totalDebt, currency) %></div>
+  <div class="hero-sub">Por pagar en las próximas fechas límite: <strong><%= formatMoney(totalToPay, currency) %></strong></div>
+</section>
+<% } %>
+
+<div class="cards-grid">
+  <% cards.forEach(function (c) { %><%- include('_card', { c: c, currency: currency }) %><% }) %>
+</div>
+
+<section class="card">
+  <% if (!cards.length) { %>
+    <h2>Agrega tu primera tarjeta</h2>
+    <p class="muted">Con la tarjeta registrada, las compras cuentan en tu presupuesto sin sacar plata de tus bolsillos, y la app te dice cuánto pagar y antes de qué fecha.</p>
+  <% } %>
+  <details <%= cards.length ? '' : 'open' %> class="mt-1">
+    <summary class="link">Agregar tarjeta de crédito</summary>
+    <form method="post" action="/tarjetas" class="stack mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field-row">
+        <div class="field"><label for="cc-name">Nombre</label><input id="cc-name" name="name" required placeholder="Ej. Visa Bancolombia"></div>
+        <div class="field"><label for="cc-last4">Últimos 4 dígitos</label><input id="cc-last4" name="last4" inputmode="numeric" maxlength="4" placeholder="4821"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cc-limit">Cupo total</label><input id="cc-limit" name="credit_limit" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label for="cc-debt">Lo que debes hoy</label><input id="cc-debt" name="initial_debt" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cc-cut">Día de corte</label><input id="cc-cut" name="cut_day" type="number" min="1" max="31" value="30"></div>
+        <div class="field"><label for="cc-due">Día límite de pago</label><input id="cc-due" name="due_day" type="number" min="1" max="31" value="15"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cc-bank">Banco (opcional)</label>
+          <select id="cc-bank" name="bank_id"><option value="">Ninguno</option><% banks.forEach(function (b) { %><option value="<%= b.id %>"><%= b.name %></option><% }) %></select>
+        </div>
+        <div class="field"><label for="cc-color">Color</label><input id="cc-color" type="color" name="color" value="#14231c"></div>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Guardar tarjeta</button>
+    </form>
+  </details>
+</section>

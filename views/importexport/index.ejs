@@ -1,0 +1,55 @@
+<section class="card">
+  <h2>Importar movimientos</h2>
+  <p class="muted">
+    Trae tus datos desde Excel o CSV sin digitar todo. Descarga la plantilla, llénala en Excel
+    (o exporta tu hoja) y pega el contenido aquí.
+  </p>
+  <div class="toolbar">
+    <a class="btn btn-ghost" href="/plantilla-movimientos.csv">Descargar plantilla CSV</a>
+  </div>
+  <form method="post" action="/importar" class="stack" id="import-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="csv_file">Subir archivo .csv</label>
+      <input id="csv_file" type="file" accept=".csv,text/csv">
+    </div>
+    <div class="field">
+      <label for="csv_text">O pegar el contenido del CSV</label>
+      <textarea id="csv_text" name="csv_text" rows="8"
+        placeholder="tipo,fecha,descripcion,valor,categoria,fuente,cuenta_origen,cuenta_destino,notas"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Importar</button>
+  </form>
+  <details class="mt-1">
+    <summary class="link">Formato esperado</summary>
+    <div class="table-wrap mt-1">
+      <table>
+        <thead><tr><th>Columna</th><th>Descripción</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td>tipo</td><td>ingreso, gasto o transferencia</td><td>gasto</td></tr>
+          <tr><td>fecha</td><td>AAAA-MM-DD</td><td>2026-11-01</td></tr>
+          <tr><td>descripcion</td><td>Texto libre</td><td>Compra del mercado</td></tr>
+          <tr><td>valor</td><td>Número (acepta 1.234.567 o 1234567,89)</td><td>120000</td></tr>
+          <tr><td>categoria</td><td>Debe existir en tu lista de categorías</td><td>Alimentación</td></tr>
+          <tr><td>fuente</td><td>Solo para ingresos (nombre de la fuente)</td><td>Pago James</td></tr>
+          <tr><td>cuenta_origen</td><td>De dónde salió (nombre exacto del bolsillo o cuenta)</td><td>Cuenta</td></tr>
+          <tr><td>cuenta_destino</td><td>A dónde entró</td><td>Moto</td></tr>
+          <tr><td>notas</td><td>Opcional</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted mt-1">Los nombres de cuentas, categorías y fuentes deben coincidir con los que ya registraste (no importa mayúsculas/minúsculas).</p>
+  </details>
+</section>
+
+<section class="card">
+  <h2>Exportar datos</h2>
+  <p class="muted">Descarga todo lo que tienes en la app cuando quieras (tus datos son tuyos).</p>
+  <div class="stack">
+    <a class="btn btn-ghost btn-block" href="/exportar/movimientos.csv">Movimientos (CSV)</a>
+    <a class="btn btn-ghost btn-block" href="/exportar/bolsillos.csv">Bancos y bolsillos (CSV)</a>
+    <a class="btn btn-primary btn-block" href="/exportar/respaldo.db">Respaldo completo de la cuenta (base de datos)</a>
+    <a class="btn btn-ghost btn-block" href="/reportes">Ver reportes</a>
+  </div>
+  <p class="muted mt-1">Además, la app genera un respaldo automático cada día y conserva los últimos 7.</p>
+</section>

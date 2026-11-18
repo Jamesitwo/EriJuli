@@ -1,0 +1,141 @@
+<% const currency = user.currency; %>
+<div class="toolbar">
+  <a class="btn btn-primary" href="/movimientos/nuevo">＋ Registrar movimiento</a>
+</div>
+
+<!-- Filtros (colapsables) -->
+<%
+  const kindNames = { ingreso: 'Ingresos', gasto: 'Gastos', transferencia: 'Movimientos' };
+  const cont = containers.find(function (c) { return String(c.id) === String(filters.container_id); });
+  const card = String(filters.container_id || '').startsWith('tarjeta:') ? cards.find(function (c) { return 'tarjeta:' + c.id === filters.container_id; }) : null;
+  const cat = categories.find(function (c) { return String(c.id) === String(filters.category_id); });
+  const active = [];
+  if (filters.kind && kindNames[filters.kind]) active.push({ key: 'kind', label: kindNames[filters.kind] });
+  if (cont) active.push({ key: 'container_id', label: cont.name });
+  if (card) active.push({ key: 'container_id', label: 'Tarjeta ' + card.name });
+  if (cat) active.push({ key: 'category_id', label: cat.name });
+  if (filters.from) active.push({ key: 'from', label: 'Desde ' + dates.formatDate(filters.from) });
+  if (filters.to) active.push({ key: 'to', label: 'Hasta ' + dates.formatDate(filters.to) });
+  const without = function (key) {
+    const q = new URLSearchParams();
+    ['kind', 'container_id', 'category_id', 'from', 'to', 'q'].forEach(function (k) { if (k !== key && filters[k]) q.set(k, filters[k]); });
+    const str = q.toString(); return '/movimientos' + (str ? '?' + str : '');
+  };
+%>
+<section class="card filters-card">
+  <form method="get" action="/movimientos" class="filters">
+    <div class="filters-bar">
+      <div class="search-field">
+        <svg class="ic ic-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 1 1 0 13a6.5 6.5 0 0 1 0-13z M15.5 15.5L20 20"/></svg>
+        <input id="f-q" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Buscar por descripción o nota" aria-label="Buscar movimientos" enterkeyhint="search">
+      </div>
+      <button class="btn btn-ghost filters-toggle" type="button" aria-expanded="false" aria-controls="filters-more" id="filters-toggle">
+        <svg class="ic ic-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16 M7 12h10 M10 18h4"/></svg>
+        Filtros<% if (active.length) { %><span class="filters-count"><%= active.length %></span><% } %>
+      </button>
+    </div>
+
+    <div class="filters-more" id="filters-more" hidden>
+      <div class="filter-grid">
+        <div class="field">
+          <label for="f-kind">Tipo</label>
+          <select id="f-kind" name="kind">
+            <option value="">Todos</option>
+            <option value="ingreso" <%= filters.kind === 'ingreso' ? 'selected' : '' %>>Ingresos</option>
+            <option value="gasto" <%= filters.kind === 'gasto' ? 'selected' : '' %>>Gastos</option>
+            <option value="transferencia" <%= filters.kind === 'transferencia' ? 'selected' : '' %>>Movimientos</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-container">Cuenta, bolsillo o tarjeta</label>
+          <select id="f-container" name="container_id">
+            <option value="">Todos</option>
+            <% containers.forEach(function (c) { %>
+              <option value="<%= c.id %>" <%= String(filters.container_id) === String(c.id) ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+            <% }) %>
+            <% cards.forEach(function (c) { %>
+              <option value="tarjeta:<%= c.id %>" <%= filters.container_id === 'tarjeta:' + c.id ? 'selected' : '' %>>Tarjeta · <%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-category">Categoría</label>
+          <select id="f-category" name="category_id">
+            <option value="">Todas</option>
+            <% categories.forEach(function (c) { %>
+              <option value="<%= c.id %>" <%= String(filters.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-from">Desde</label>
+          <input id="f-from" type="date" name="from" value="<%= filters.from || '' %>">
+        </div>
+        <div class="field">
+          <label for="f-to">Hasta</label>
+          <input id="f-to" type="date" name="to" value="<%= filters.to || '' %>">
+        </div>
+      </div>
+      <div class="filter-actions mt-1">
+        <button class="btn btn-primary btn-sm" type="submit">Aplicar filtros</button>
+        <a class="btn btn-ghost btn-sm" href="/movimientos">Limpiar todo</a>
+      </div>
+    </div>
+  </form>
+
+  <% if (active.length || filters.q) { %>
+    <div class="filter-chips" aria-label="Filtros activos">
+      <% if (filters.q) { %><a class="filter-chip" href="<%= without('q') %>" aria-label="Quitar búsqueda">“<%= filters.q %>”<svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18"/></svg></a><% } %>
+      <% active.forEach(function (f) { %>
+        <a class="filter-chip" href="<%= without(f.key) %>" aria-label="Quitar filtro <%= f.label %>"><%= f.label %><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18"/></svg></a>
+      <% }) %>
+      <a class="link filter-clear" href="/movimientos">Limpiar</a>
+    </div>
+  <% } %>
+</section>
+<script>
+  (function () {
+    var t = document.getElementById('filters-toggle'), box = document.getElementById('filters-more');
+    var KEY = 'ej-filtros-abiertos';
+    function set(open) {
+      box.hidden = !open; t.setAttribute('aria-expanded', String(open)); t.classList.toggle('is-open', open);
+      try { sessionStorage.setItem(KEY, open ? '1' : ''); } catch (e) {}
+    }
+    var start = false; try { start = sessionStorage.getItem(KEY) === '1'; } catch (e) {}
+    set(start);
+    // Al aplicar, el panel se cierra: los filtros activos quedan como fichas
+    t.form.addEventListener('submit', function () { try { sessionStorage.setItem(KEY, ''); } catch (e) {} });
+    t.addEventListener('click', function () { set(box.hidden); if (!box.hidden) { var f = document.getElementById('f-kind'); if (f) f.focus(); } });
+  })();
+</script>
+
+<!-- Listado -->
+<section class="card">
+  <div class="card-head">
+    <h2><%= movements.length %> movimientos</h2>
+    <a class="btn btn-ghost btn-sm" href="/exportar/movimientos.csv">Exportar CSV</a>
+  </div>
+  <% if (!movements.length) { %>
+    <p class="muted">No hay movimientos con esos filtros.</p>
+  <% } %>
+  <div class="stack">
+    <% movements.forEach(function (t) { %>
+      <div class="tx-row">
+        <a class="tx-icon <%= t.kind %>" href="/movimientos/<%= t.id %>/editar"><%= t.kind === 'ingreso' ? '↑' : t.kind === 'gasto' ? '↓' : '⇄' %></a>
+        <a class="tx-info" href="/movimientos/<%= t.id %>/editar">
+          <strong><%= t.description %></strong>
+          <small class="muted">
+            <%= dates.formatDate(t.date) %>
+            · <%= t.category_name || (t.kind === 'transferencia' ? (t.from_name || '') + ' → ' + (t.to_name || '') : 'Sin categoría') %>
+            <% if (t.expense_type === 'extra') { %> · <span class="badge badge-warning">extra</span><% } %>
+            <% if (t.expense_type === 'fijo') { %> · <span class="badge">fijo</span><% } %>
+            <% if (t.origin !== 'manual') { %> · <span class="badge"><%= t.origin %></span><% } %>
+          </small>
+        </a>
+        <span class="tx-amount <%= t.kind %>">
+          <%= t.kind === 'ingreso' ? '+' : t.kind === 'gasto' ? '-' : '' %><%= formatMoney(t.amount, currency) %>
+        </span>
+      </div>
+    <% }) %>
+  </div>
+</section>

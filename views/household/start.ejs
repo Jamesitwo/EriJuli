@@ -1,0 +1,22 @@
+<section class="card">
+  <h2>Finanzas en pareja o en familia</h2>
+  <p class="muted">Un hogar compartido junta los gastos en común (arriendo, mercado, servicios) y calcula quién le debe a quién. Cada persona sigue teniendo sus bancos, bolsillos y movimientos privados.</p>
+</section>
+<div class="grid grid-2">
+  <section class="card">
+    <h2>Crear un hogar</h2>
+    <form method="post" action="/hogar" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="h-name">Nombre</label><input id="h-name" name="name" placeholder="Ej. Casa EriJuli" required></div>
+      <button class="btn btn-primary btn-block" type="submit">Crear hogar</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Unirme con un código</h2>
+    <form method="post" action="/hogar/unirse" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="h-code">Código de invitación</label><input id="h-code" name="code" value="<%= code %>" placeholder="ABC234" autocapitalize="characters" spellcheck="false" required></div>
+      <button class="btn btn-ghost btn-block" type="submit">Unirme</button>
+    </form>
+  </section>
+</div>

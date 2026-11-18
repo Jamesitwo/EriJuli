@@ -1,0 +1,24 @@
+<div class="card auth-card lock-card">
+  <div class="avatar lock-avatar" aria-hidden="true"><%= (user.name || user.email).charAt(0).toUpperCase() %></div>
+  <h1 class="center">Hola<%= user.name ? ', ' + String(user.name).split(' ')[0] : '' %></h1>
+  <p class="muted center">Ingresa tu PIN para continuar</p>
+  <form method="post" action="/bloqueo" id="pin-form" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="password" name="pin" id="pin-input" inputmode="numeric" pattern="\d{4,6}" maxlength="6" class="pin-input" aria-label="PIN" autofocus required>
+    <div class="pin-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="keypad" aria-label="Teclado del PIN">
+      <% [1,2,3,4,5,6,7,8,9].forEach(function (n) { %><button type="button" data-k="<%= n %>"><%= n %></button><% }) %>
+      <% if (hasDevices) { %>
+        <button type="button" id="unlock-bio" aria-label="Desbloquear con huella o Face ID"><svg class="ic"><use href="#i-finger"/></svg></button>
+      <% } else { %><span></span><% } %>
+      <button type="button" data-k="0">0</button>
+      <button type="button" data-k="del" aria-label="Borrar"><svg class="ic"><use href="#i-back"/></svg></button>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Desbloquear</button>
+  </form>
+  <form method="post" action="/logout" class="center mt-1">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn btn-quiet btn-sm" type="submit">No soy yo · cerrar sesión</button>
+  </form>
+</div>
+<script src="/js/seguridad.js?v=7" defer></script>

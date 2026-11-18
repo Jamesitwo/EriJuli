@@ -1,0 +1,29 @@
+<% const currency = user.currency; %>
+<!-- Página "Más": navegación completa en celular -->
+<section class="card">
+  <h2>Tu dinero</h2>
+  <div class="menu-list">
+    <a href="/bancos"><svg class="ic"><use href="#i-pocket"/></svg><span>Bancos y bolsillos</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/tarjetas"><svg class="ic"><use href="#i-card"/></svg><span>Tarjetas de crédito</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/hogar"><svg class="ic"><use href="#i-users"/></svg><span>Hogar compartido</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/presupuesto"><svg class="ic"><use href="#i-target"/></svg><span>Presupuesto</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/gastos-fijos"><svg class="ic"><use href="#i-cal"/></svg><span>Gastos fijos</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/ingresos"><svg class="ic"><use href="#i-in"/></svg><span>Ingresos y fuentes</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/metas"><svg class="ic"><use href="#i-star"/></svg><span>Metas de ahorro</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/prestamos"><svg class="ic"><use href="#i-hand"/></svg><span>Préstamos (me deben / debo)</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/reportes"><svg class="ic"><use href="#i-chart"/></svg><span>Reportes</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+  </div>
+</section>
+<section class="card">
+  <h2>Herramientas</h2>
+  <div class="menu-list">
+    <a href="/importar-exportar"><svg class="ic"><use href="#i-file"/></svg><span>Importar / exportar</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/historial"><svg class="ic"><use href="#i-clock"/></svg><span>Historial de cambios</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/seguridad"><svg class="ic"><use href="#i-lock"/></svg><span>Seguridad y notificaciones</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+    <a href="/configuracion"><svg class="ic"><use href="#i-gear"/></svg><span>Configuración</span><svg class="ic ic-sm"><use href="#i-chev"/></svg></a>
+  </div>
+</section>
+<form action="/logout" method="post">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <button class="btn btn-ghost btn-block" type="submit">Cerrar sesión</button>
+</form>

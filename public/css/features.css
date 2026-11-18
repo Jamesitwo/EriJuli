@@ -1,0 +1,141 @@
+/* ===== EriJuli · funciones: tarjetas, topes, gastos divididos, recibos, evolución, hogar y seguridad ===== */
+
+[hidden] { display: none !important; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; margin: -1px !important; border: 0 !important; overflow: hidden !important; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.ej-hint.warn { color: var(--maiz-ink); font-weight: 600; }
+.field.is-off { opacity: .45; pointer-events: none; }
+.right { text-align: right; }
+
+/* Segmentado de 2 opciones (también con enlaces) */
+.segmented.seg-2 { grid-template-columns: repeat(2, 1fr); }
+.segmented a { display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: var(--radius-pill); font-weight: 600; font-size: .9375rem; color: var(--ink-muted); }
+.segmented a.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-card); }
+
+/* ----- Tarjetas de crédito ----- */
+.cards-grid { display: grid; gap: var(--space-4); }
+@media (min-width: 720px) { .cards-grid:not(.one) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ccard {
+  position: relative; display: grid; gap: var(--space-3); color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  padding: var(--space-4); box-shadow: var(--shadow-card);
+}
+.ccard-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); }
+.ccard-name { font-weight: 600; font-size: 1.0625rem; display: flex; align-items: center; gap: var(--space-2); }
+.ccard-name::before { content: ""; width: 26px; height: 18px; border-radius: 4px; flex: none; background: var(--cc, var(--ink)); box-shadow: inset 0 -5px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(0,0,0,.12); }
+.ccard-row { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3); }
+.ccard .progress { margin: 0; }
+.ccard-foot { display: flex; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; font-size: .875rem; padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.ej-pick.tarjeta { background: var(--surface); border-color: var(--line-strong); }
+
+/* ----- Cuánto queda por día ----- */
+.runway-main { display: flex; gap: var(--space-3); align-items: flex-start; }
+.runway-main > .ic { color: var(--monte); margin-top: 2px; }
+.runway-line { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunk); font-size: .9375rem; }
+.runway-line .ic { color: var(--ink-muted); }
+
+/* ----- Topes ----- */
+.limit-row .progress { margin: var(--space-2) 0 var(--space-1); }
+.limit-name { display: inline-flex; align-items: center; gap: var(--space-1); font-weight: 600; }
+
+/* ----- Gasto dividido ----- */
+.split-box { margin-top: var(--space-2); }
+.split-rows { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+.split-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 40px; gap: var(--space-2); align-items: center; }
+.split-row input, .split-row select { min-width: 0; width: 100%; }
+
+/* ----- Fotos de recibos ----- */
+.receipt-field { position: relative; }
+.receipt-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.receipt-thumb { position: relative; width: 88px; height: 88px; margin: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--line); background: var(--surface-sunk); }
+.receipt-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.receipt-thumb .ej-icon-btn { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; background: rgba(20,35,28,.65); color: #fff; border-radius: 50%; }
+.receipt-add { width: 88px; height: 88px; display: grid; place-content: center; justify-items: center; gap: 4px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius-md); color: var(--ink-muted); font-size: .75rem; font-weight: 600; cursor: pointer; text-align: center; }
+.receipt-add:hover { border-color: var(--monte); color: var(--monte); }
+.receipt-field:focus-within .receipt-add { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ----- Evolución (gráficas) ----- */
+.evo-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4); }
+.evo-kpis .pocket-amount { font-size: 1.375rem; }
+.chart { margin: 0; position: relative; }
+.chart svg { display: block; width: 100%; height: 200px; overflow: visible; }
+.chart-grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.chart-line { fill: none; stroke: var(--monte); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.chart-area { fill: var(--monte-soft); opacity: .7; }
+.chart-plot { position: relative; }
+.chart-end { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--monte); box-shadow: 0 0 0 3px var(--surface); }
+.chart-dot { fill: var(--surface); stroke: var(--monte); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.chart-dot.last { fill: var(--monte); }
+.bar-in { fill: var(--monte); }
+.bar-ex { fill: var(--ink-muted); }
+.chart-labels { display: flex; justify-content: space-between; padding: 0 5%; font-size: .75rem; color: var(--ink-muted); margin-top: var(--space-1); }
+.chart-labels.bars { display: grid; grid-template-columns: repeat(var(--n), 1fr); padding: 0 4.375%; text-align: center; }
+.chart-labels span { white-space: nowrap; }
+.chart-scale { position: absolute; top: 0; right: 0; height: 200px; display: flex; flex-direction: column; justify-content: space-between; padding: 22px 0; font-size: .6875rem; color: var(--ink-muted); text-align: right; pointer-events: none; }
+.chart-legend { display: flex; gap: var(--space-4); font-size: .8125rem; color: var(--ink-muted); margin: var(--space-2) 0; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend .sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+@media (max-width: 520px) {
+  .chart svg { height: 170px; }
+  .chart-scale { height: 170px; }
+  .chart-labels span:nth-child(even) { visibility: hidden; }
+}
+
+/* ----- Hogar ----- */
+.settle-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunk); }
+.member-list { display: grid; gap: var(--space-3); }
+.member { display: flex; align-items: center; gap: var(--space-3); }
+.member > span:last-child { display: flex; flex-direction: column; }
+.invite { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1.5px dashed var(--line-strong); border-radius: var(--radius-md); }
+.invite-code { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; letter-spacing: .12em; }
+
+/* ----- Seguridad ----- */
+.codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); list-style: none; padding: 0; }
+.codes code { display: block; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunk); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 1rem; letter-spacing: .04em; text-align: center; }
+.lock-card { text-align: center; }
+.lock-avatar { width: 64px; height: 64px; font-size: 1.5rem; margin: 0 auto var(--space-3); }
+.pin-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pin-dots { display: flex; justify-content: center; gap: var(--space-3); margin: var(--space-4) 0 var(--space-5); }
+.pin-dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); }
+.pin-dots i:nth-child(n+5) { display: none; }
+.pin-dots i.on { background: var(--monte); border-color: var(--monte); }
+.pin-dots i.on:nth-child(n+5) { display: block; }
+.keypad { display: grid; grid-template-columns: repeat(3, 72px); gap: var(--space-3); justify-content: center; margin-bottom: var(--space-5); }
+.keypad button { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--surface-sunk); color: var(--ink); font: inherit; font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; cursor: pointer; display: grid; place-items: center; }
+.keypad button:active { background: var(--monte-soft); transform: scale(.96); }
+
+@media (min-width: 1024px) { .side-nav a { padding: 8px var(--space-3); } .side-new { margin-bottom: var(--space-3); } }
+
+/* Campo de monto grande (gana a la regla general de campos) */
+input.input-money:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]) {
+  min-height: 80px; text-align: center; border: 0; background: var(--surface-sunk); border-radius: var(--radius-lg);
+  font-family: var(--font-display); font-size: 2.5rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+}
+input.input-money:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ----- Filtros de movimientos (colapsables) ----- */
+.filters-card { padding: var(--space-3); }
+.filters-bar { display: flex; gap: var(--space-2); align-items: center; }
+.search-field { position: relative; flex: 1; min-width: 0; }
+.search-field .ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); pointer-events: none; }
+.search-field input[type="search"] { width: 100%; padding-left: 40px !important; -webkit-appearance: none; appearance: none; }
+.search-field input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+.filters-toggle { flex: none; padding: 0 var(--space-4); }
+.filters-toggle.is-open { background: var(--monte-soft); border-color: var(--monte); color: var(--monte); }
+.filters-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--monte); color: var(--on-monte); font-size: .75rem; line-height: 20px; text-align: center; }
+.filters-more { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.filters-more .field { margin-bottom: 0; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-3); }
+.filter-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 var(--space-2) 0 var(--space-3); border-radius: var(--radius-pill); background: var(--monte-soft); color: var(--monte); font-size: .875rem; font-weight: 600; }
+.filter-chip .ic { width: 16px; height: 16px; }
+.filter-chip:hover { filter: brightness(.96); }
+.filter-clear { font-size: .875rem; margin-left: var(--space-1); }
+@media (max-width: 420px) { .filters-toggle { padding: 0 var(--space-3); } }
+
+/* Control segmentado: la opción marcada es la que manda (evita dos opciones resaltadas a la vez) */
+.segmented label.active:has(input):not(:has(input:checked)) { background: transparent; color: var(--ink-muted); box-shadow: none; }
+
+/* Listas desplegables: el texto elegido en una sola línea */
+select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Metas: el bolsillo ocupa su propia fila (sus opciones son largas) */
+.field-row:has(#g-container) { grid-template-columns: 1fr; }
+.goal-form .ej-hint { margin-top: 0; }

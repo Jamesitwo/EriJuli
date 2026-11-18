@@ -1,0 +1,41 @@
+<div class="card auth-card">
+  <h1>Recuperar acceso</h1>
+  <div class="segmented seg-2 mt-1" role="tablist">
+    <a class="<%= mode === 'correo' ? 'active' : '' %>" href="/recuperar" role="tab" aria-selected="<%= mode === 'correo' %>">Con mi correo</a>
+    <a class="<%= mode === 'codigo' ? 'active' : '' %>" href="/recuperar?modo=codigo" role="tab" aria-selected="<%= mode === 'codigo' %>">Con un código</a>
+  </div>
+  <% if (mode === 'correo') { %>
+    <p class="muted mt-1">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.</p>
+    <form method="post" action="/recuperar" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="email">Correo</label>
+        <input id="email" type="email" name="email" required autocomplete="email" placeholder="tucorreo@ejemplo.com">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Enviar enlace</button>
+    </form>
+  <% } else { %>
+    <p class="muted mt-1">Usa uno de los códigos de recuperación que guardaste en <strong>Seguridad</strong>. Cada código sirve una sola vez.</p>
+    <form method="post" action="/recuperar/codigo" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="email">Correo</label>
+        <input id="email" type="email" name="email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="code">Código de recuperación</label>
+        <input id="code" name="code" required autocomplete="one-time-code" placeholder="ABCDE-12345" autocapitalize="characters" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="password">Contraseña nueva</label>
+        <input id="password" type="password" name="password" required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="password2">Repite la contraseña</label>
+        <input id="password2" type="password" name="password2" required minlength="8" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Cambiar contraseña</button>
+    </form>
+  <% } %>
+  <p class="center muted"><a href="/login">Volver a iniciar sesión</a></p>
+</div>

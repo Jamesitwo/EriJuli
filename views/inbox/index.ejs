@@ -1,0 +1,232 @@
+<% const currency = user.currency; %>
+<section class="card">
+  <h2>Bandeja de revisión</h2>
+  <div class="alert <%= gmail.connected ? 'alert-info' : 'alert-warning' %>">
+    <span><%= gmail.message %></span>
+  </div>
+  <p class="muted">
+    Aquí llegan los <strong>movimientos propuestos</strong> detectados en tus correos de banco.
+    Nada afecta tus saldos hasta que los aceptes, edites o descartes.
+  </p>
+
+  <% if (gmail.connected) { %>
+    <!-- Sincronizar -->
+    <form method="post" action="/gmail/sincronizar" class="filter-grid mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="sync-days">Leer correos de los últimos</label>
+        <select id="sync-days" name="dias">
+          <option value="7">7 días</option>
+          <option value="30" selected>30 días</option>
+          <option value="90">90 días</option>
+          <option value="365">1 año</option>
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" type="submit">Sincronizar ahora</button>
+      </div>
+    </form>
+
+    <!-- Remitentes autorizados -->
+    <details class="mt-1">
+      <summary class="link">Remitentes autorizados (<%= senders.length %>)</summary>
+      <p class="muted mt-1">La app SOLO lee correos de los remitentes que autorizas aquí (ej. los avisos de tu banco).</p>
+      <div class="stack mt-1">
+        <% senders.forEach(function (s) { %>
+          <div class="flex-between">
+            <span><%= s.sender %> <small class="muted"><%= s.label || s.bank_name || '' %></small></span>
+            <form method="post" action="/gmail/remitentes/<%= s.id %>/eliminar">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-ghost btn-sm" type="submit">Quitar</button>
+            </form>
+          </div>
+        <% }) %>
+      </div>
+      <form method="post" action="/gmail/remitentes" class="filter-grid mt-1">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="sender">Correo del remitente</label>
+          <input id="sender" name="sender" type="email" required placeholder="alertas@bancolombia.com">
+        </div>
+        <div class="field">
+          <label for="sender-label">Descripción</label>
+          <input id="sender-label" name="label" placeholder="Ej. Avisos Bancolombia">
+        </div>
+        <div class="field">
+          <label for="sender-bank">Banco</label>
+          <select id="sender-bank" name="bank_id">
+            <option value="">Sin banco</option>
+            <% banks.forEach(function (b) { %>
+              <option value="<%= b.id %>"><%= b.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button class="btn btn-primary" type="submit">Autorizar remitente</button>
+        </div>
+      </form>
+    </details>
+
+    <!-- Desconectar -->
+    <details class="mt-1">
+      <summary class="link">Desconectar Gmail</summary>
+      <form method="post" action="/gmail/desconectar" class="stack mt-1">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label class="check">
+          <input type="checkbox" name="borrar_propuestas">
+          Borrar también las propuestas importadas y las reglas aprendidas
+        </label>
+        <button class="btn btn-danger" type="submit"
+          onclick="return confirm('Se revocará el acceso de la app a tu Gmail. ¿Continuar?');">Desconectar y revocar acceso</button>
+      </form>
+    </details>
+  <% } else { %>
+    <div class="stack mt-1">
+      <a class="btn btn-primary btn-block" href="/gmail/conectar">Conectar Gmail (solo lectura)</a>
+    </div>
+    <details class="mt-1">
+      <summary class="link">¿Cómo funciona y qué datos se usan?</summary>
+      <ol class="mt-1 muted">
+        <li>La app pide permiso de <strong>solo lectura</strong> (nunca tu contraseña).</li>
+        <li>Leerá únicamente los correos de los remitentes que autorices.</li>
+        <li>Solo se guardan los datos extraídos (valor, fecha, comercio), nunca el cuerpo del correo.</li>
+        <li>Puedes desconectar Gmail y borrar lo importado cuando quieras.</li>
+      </ol>
+      <p class="muted">Si aún no está configurado en el servidor, registra los movimientos a mano o impórtalos por CSV.</p>
+    </details>
+  <% } %>
+</section>
+
+<% if (!items.length) { %>
+  <section class="card">
+    <p class="muted">No hay movimientos esperando revisión. </p>
+  </section>
+<% } %>
+
+<% items.forEach(function (p) { %>
+  <section class="proposal">
+    <div class="proposal-head">
+      <span style="display:flex;gap:6px;align-items:center"><svg class="ic ic-sm"><use href="#i-mail"/></svg><%= p.status === 'sin_procesar' ? 'Sin procesar' : 'Propuesto' %><%= p.email_sender ? ' · ' + p.email_sender : '' %></span>
+      <% if (p.email_link) { %><a href="<%= p.email_link %>" target="_blank" rel="noopener">Ver correo</a><% } %>
+    </div>
+    <div class="proposal-body">
+    <div class="card-head" style="margin:0">
+      <h2><%= p.description || 'Movimiento detectado' %></h2>
+      <strong class="tx-amount <%= p.kind %>"><%= p.kind === 'ingreso' ? '+ ' : p.kind === 'gasto' ? '− ' : '' %><%= formatMoney(p.amount, currency) %></strong>
+    </div>
+    <p class="muted">
+      <%= dates.formatDate(p.date) %>
+      <% if (p.email_sender) { %> · de: <%= p.email_sender %><% } %>
+      <% if (p.email_subject) { %> · "<%= p.email_subject %>"<% } %>
+      <% if (p.status === 'sin_procesar') { %> · <span class="badge badge-warning">sin procesar</span><% } %>
+    </p>
+    <form method="post" action="/bandeja/<%= p.id %>/aceptar" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field-row">
+        <div class="field">
+          <label>Tipo</label>
+          <select name="kind">
+            <option value="gasto" <%= p.kind === 'gasto' ? 'selected' : '' %>>Gasto</option>
+            <option value="ingreso" <%= p.kind === 'ingreso' ? 'selected' : '' %>>Ingreso</option>
+            <option value="transferencia" <%= p.kind === 'transferencia' ? 'selected' : '' %>>Movimiento</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Valor</label>
+          <input name="amount" inputmode="decimal" value="<%= (p.amount / 100).toString().replace('.', ',') %>">
+        </div>
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <input name="description" value="<%= p.description || '' %>">
+      </div>
+      <div class="field">
+        <label>Categoría</label>
+        <select name="category_id">
+          <option value="">Sin categoría</option>
+          <% categories.forEach(function (c) { %>
+            <option value="<%= c.id %>" <%= p.category_id === c.id ? 'selected' : '' %>><%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="field">
+        <label>De dónde salió</label>
+        <select name="container_from_id">
+          <option value="">Elegir…</option>
+          <% containers.forEach(function (c) { %>
+            <option value="<%= c.id %>" <%= p.container_from_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="field">
+        <label>A dónde entró</label>
+        <select name="container_to_id">
+          <option value="">Elegir…</option>
+          <% containers.forEach(function (c) { %>
+            <option value="<%= c.id %>" <%= p.container_to_id === c.id ? 'selected' : '' %>><%= c.bank_name %> · <%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <label class="check">
+        <input type="checkbox" name="learn_rule" checked>
+        Recordar esta decisión para la próxima vez (misma categoría y cuenta)
+      </label>
+      <div class="flex-between">
+        <button class="btn btn-primary btn-block" type="submit">Aceptar y registrar</button>
+      </div>
+    </form>
+    <form method="post" action="/bandeja/<%= p.id %>/descartar" onsubmit="return confirm('¿Descartar esta propuesta? No afectará tus saldos.');">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-danger btn-block" type="submit">Descartar</button>
+    </form>
+  </div>
+  </section>
+<% }) %>
+
+<!-- Agregar propuesta manual -->
+<section class="card">
+  <h2>Registrar movimiento detectado a mano</h2>
+  <p class="muted">Para correos que la app no pudo interpretar o para cargar propuestas tú mismo.</p>
+  <form method="post" action="/bandeja" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field-row">
+      <div class="field">
+        <label>Tipo</label>
+        <select name="kind">
+          <option value="gasto">Gasto</option>
+          <option value="ingreso">Ingreso</option>
+          <option value="transferencia">Movimiento</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Valor</label>
+        <input name="amount" inputmode="decimal" required placeholder="0">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" name="date" value="<%= dates.todayISO() %>">
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <input name="description" placeholder="Ej. Compra Éxito">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Remitente del correo</label>
+        <input name="email_sender" placeholder="Ej. alertas@bancolombia.com">
+      </div>
+      <div class="field">
+        <label>Asunto</label>
+        <input name="email_subject">
+      </div>
+    </div>
+    <div class="field">
+      <label>Enlace al correo (opcional)</label>
+      <input name="email_link" placeholder="https://mail.google.com/…">
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Agregar a la bandeja</button>
+  </form>
+</section>

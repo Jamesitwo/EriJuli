@@ -1,0 +1,166 @@
+<% const currency = user.currency; %>
+<div class="hero hero-sm">
+  <div class="hero-label">Balance de préstamos</div>
+  <%
+    let meDeben = 0, debo = 0;
+    loans.forEach(function (l) {
+      if (l.status === 'abierto') {
+        if (l.direction === 'me_deben') meDeben += l.balance;
+        else debo += l.balance;
+      }
+    });
+  %>
+  <div class="hero-amount <%= meDeben - debo < 0 ? 'text-danger' : '' %>"><%= formatMoney(meDeben - debo, currency) %></div>
+  <div class="hero-sub">Te deben <%= formatMoney(meDeben, currency) %> · Debes <%= formatMoney(debo, currency) %></div>
+</div>
+
+<!-- Listado -->
+<section class="card">
+  <div class="card-head"><h2>Préstamos</h2></div>
+  <% if (!loans.length) { %><p class="muted">Sin préstamos registrados.</p><% } %>
+  <div class="stack">
+    <% loans.forEach(function (l) { %>
+      <details class="fixed-item">
+        <summary>
+          <span>
+            <strong><%= l.direction === 'me_deben' ? 'Me debe' : 'Le debo' %> · <%= l.person %></strong>
+            <small class="muted">
+              <%= dates.formatDate(l.date) %>
+              <% if (l.due_date) { %> · pago antes del <%= dates.formatDate(l.due_date) %><% } %>
+              <% if (l.status === 'saldado') { %> · <span class="badge badge-success">saldado</span><% } %>
+            </small>
+          </span>
+          <span class="flex-between">
+            <strong><%= formatMoney(l.balance, currency) %></strong>
+            <small class="muted">de <%= formatMoney(l.amount, currency) %></small>
+          </span>
+        </summary>
+
+        <div class="mt-1">
+          <p class="muted">Abonado: <%= formatMoney(l.paid, currency) %> · Falta: <%= formatMoney(l.balance, currency) %></p>
+          <form method="post" action="/prestamos/<%= l.id %>/abonos" class="stack">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="field-row">
+              <div class="field">
+                <label>Valor del abono</label>
+                <input name="amount" inputmode="decimal" required placeholder="0">
+              </div>
+              <div class="field">
+                <label>Fecha</label>
+                <input type="date" name="date" value="<%= dates.todayISO() %>">
+              </div>
+            </div>
+            <div class="field">
+              <label>Aplicar a una cuenta o bolsillo (opcional)</label>
+              <select name="container_id">
+                <option value="">Solo registrar el abono (sin mover saldos)</option>
+                <% containers.forEach(function (c) { %>
+                  <option value="<%= c.id %>"><%= c.bank_name %> · <%= c.name %></option>
+                <% }) %>
+              </select>
+              <small class="muted"><%= l.direction === 'me_deben' ? 'Si te pagan, el dinero entra a la cuenta elegida.' : 'Si tú pagas, el dinero sale de la cuenta elegida.' %></small>
+            </div>
+            <button class="btn btn-primary btn-sm" type="submit">Registrar abono</button>
+          </form>
+
+          <details class="mt-1">
+            <summary class="link">Editar préstamo</summary>
+            <form method="post" action="/prestamos/<%= l.id %>/editar" class="stack mt-1">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="field">
+                <label>Persona</label>
+                <input name="person" value="<%= l.person %>">
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Valor original</label>
+                  <input name="amount" inputmode="decimal" value="<%= (l.amount / 100).toString().replace('.', ',') %>">
+                </div>
+                <div class="field">
+                  <label>Fecha</label>
+                  <input type="date" name="date" value="<%= l.date %>">
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Fecha límite de pago</label>
+                  <input type="date" name="due_date" value="<%= l.due_date || '' %>">
+                </div>
+                <div class="field">
+                  <label>Estado</label>
+                  <select name="status">
+                    <option value="abierto" <%= l.status === 'abierto' ? 'selected' : '' %>>Abierto</option>
+                    <option value="saldado" <%= l.status === 'saldado' ? 'selected' : '' %>>Saldado</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label>Notas</label>
+                <textarea name="notes" rows="2"><%= l.notes || '' %></textarea>
+              </div>
+              <button class="btn btn-primary btn-sm" type="submit">Guardar</button>
+            </form>
+            <form method="post" action="/prestamos/<%= l.id %>/eliminar" onsubmit="return confirm('¿Eliminar este préstamo y sus abonos?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-danger btn-sm btn-block" type="submit">Eliminar</button>
+            </form>
+          </details>
+        </div>
+      </details>
+    <% }) %>
+  </div>
+</section>
+
+<!-- Registrar préstamo -->
+<section class="card">
+  <h2>Registrar préstamo</h2>
+  <form method="post" action="/prestamos" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="segmented seg-2" role="radiogroup" aria-label="Tipo de préstamo">
+      <label><input type="radio" name="direction" value="me_deben" checked> Me deben</label>
+      <label><input type="radio" name="direction" value="debo"> Debo</label>
+    </div>
+    <div class="field">
+      <label for="l-person">Persona</label>
+      <input id="l-person" name="person" required placeholder="Ej. James">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="l-amount">Valor</label>
+        <input id="l-amount" name="amount" inputmode="decimal" required placeholder="0">
+      </div>
+      <div class="field">
+        <label for="l-date">Fecha</label>
+        <input id="l-date" name="date" type="date" value="<%= dates.todayISO() %>">
+      </div>
+    </div>
+    <div class="field">
+      <label for="l-due">Fecha límite de pago (opcional)</label>
+      <input id="l-due" name="due_date" type="date">
+    </div>
+    <div class="field">
+      <label for="l-notes">Notas</label>
+      <textarea id="l-notes" name="notes" rows="2" placeholder="Ej. prestado para papeles de la moto"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Guardar préstamo</button>
+  </form>
+</section>
+
+<!-- Últimos abonos -->
+<% if (payments.length) { %>
+<section class="card">
+  <div class="card-head"><h2>Últimos abonos</h2></div>
+  <div class="stack">
+    <% payments.forEach(function (p) { %>
+      <div class="tx-row">
+        <span class="tx-icon <%= p.direction === 'me_deben' ? 'ingreso' : 'gasto' %>"><%= p.direction === 'me_deben' ? '↑' : '↓' %></span>
+        <span class="tx-info">
+          <strong><%= p.person %></strong>
+          <small class="muted"><%= dates.formatDate(p.date) %> <%= p.notes ? '· ' + p.notes : '' %></small>
+        </span>
+        <span class="tx-amount <%= p.direction === 'me_deben' ? 'ingreso' : 'gasto' %>"><%= formatMoney(p.amount, currency) %></span>
+      </div>
+    <% }) %>
+  </div>
+</section>
+<% } %>

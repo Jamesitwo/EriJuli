@@ -1,0 +1,76 @@
+<% const currency = user.currency; const s = status; %>
+<div class="cards-grid one"><%- include('_card', { c: Object.assign({}, card, { status: s, bank_name: (banks.find(function (b) { return b.id === card.bank_id; }) || {}).name }), currency: currency }) %></div>
+
+<section class="card">
+  <h2>Pagar la tarjeta</h2>
+  <p class="muted">Este periodo: pagar <strong><%= formatMoney(s.toPay, currency) %></strong> (compras hasta el corte del <%= dates.formatDate(s.lastCut, { year: false }) %>). Desde el corte llevas <%= formatMoney(s.sinceCut, currency) %> en compras nuevas.</p>
+  <form method="post" action="/tarjetas/<%= card.id %>/pagar" class="stack mt-1">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="pay-amount">Valor del pago</label>
+      <input id="pay-amount" name="amount" inputmode="decimal" required value="<%= s.toPay > 0 ? (s.toPay / 100).toString().replace('.', ',') : '' %>" placeholder="0">
+      <div class="toolbar mt-1">
+        <button type="button" class="btn btn-ghost btn-sm" data-fill="#pay-amount" data-value="<%= (s.toPay / 100) %>">Pago del periodo</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-fill="#pay-amount" data-value="<%= (Math.max(0, s.debt) / 100) %>">Toda la deuda</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="pay-from">Sale de</label>
+      <select id="pay-from" name="container_from_id" required data-picker>
+        <option value="">Elige cuenta o bolsillo…</option>
+        <% containers.forEach(function (c) { %>
+          <option value="<%= c.id %>" data-name="<%= c.name %>" data-bank="<%= c.bank_name %>" data-kind="<%= c.kind %>" data-balance="<%= formatMoney(c.balance, currency) %>"><%= c.bank_name %> · <%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field"><label for="pay-date">Fecha</label><input id="pay-date" type="date" name="date" value="<%= dates.todayISO() %>"></div>
+    <button class="btn btn-primary btn-block" type="submit">Registrar pago</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Movimientos</h2><a class="btn btn-ghost btn-sm" href="/movimientos/nuevo?container_from_id=tarjeta:<%= card.id %>">Registrar compra</a></div>
+  <% if (!movements.length) { %><p class="muted">Todavía no hay compras ni pagos con esta tarjeta.</p><% } %>
+  <div class="stack">
+    <% movements.forEach(function (t) { const pay = t.kind === 'transferencia'; %>
+      <a class="tx-row" href="/movimientos/<%= t.id %>/editar">
+        <span class="tx-icon <%= pay ? 'ingreso' : 'gasto' %>"><%= pay ? '↓' : '↑' %></span>
+        <span class="tx-info"><strong><%= pay ? 'Pago' : t.description %></strong><small class="muted"><%= dates.formatDate(t.date) %><%= pay ? ' · desde ' + (t.from_name || '') : (t.category_name ? ' · ' + t.category_name : '') %></small></span>
+        <span class="tx-amount <%= pay ? 'ingreso' : 'gasto' %>"><%= pay ? '− ' : '+ ' %><%= formatMoney(t.amount, currency) %></span>
+      </a>
+    <% }) %>
+  </div>
+  <small class="muted">Las compras suben la deuda (+) y los pagos la bajan (−).</small>
+</section>
+
+<section class="card">
+  <details>
+    <summary class="link">Editar tarjeta</summary>
+    <form method="post" action="/tarjetas/<%= card.id %>/editar" class="stack mt-1">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field-row">
+        <div class="field"><label>Nombre</label><input name="name" required value="<%= card.name %>"></div>
+        <div class="field"><label>Últimos 4 dígitos</label><input name="last4" inputmode="numeric" maxlength="4" value="<%= card.last4 %>"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Cupo total</label><input name="credit_limit" inputmode="decimal" value="<%= (card.credit_limit / 100).toString().replace('.', ',') %>"></div>
+        <div class="field"><label>Deuda inicial</label><input name="initial_debt" inputmode="decimal" value="<%= (card.initial_debt / 100).toString().replace('.', ',') %>"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Día de corte</label><input name="cut_day" type="number" min="1" max="31" value="<%= card.cut_day %>"></div>
+        <div class="field"><label>Día límite de pago</label><input name="due_day" type="number" min="1" max="31" value="<%= card.due_day %>"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Banco</label>
+          <select name="bank_id"><option value="">Ninguno</option><% banks.forEach(function (b) { %><option value="<%= b.id %>" <%= b.id === card.bank_id ? 'selected' : '' %>><%= b.name %></option><% }) %></select>
+        </div>
+        <div class="field"><label>Color</label><input type="color" name="color" value="<%= card.color %>"></div>
+      </div>
+      <button class="btn btn-ghost" type="submit">Guardar cambios</button>
+    </form>
+    <form method="post" action="/tarjetas/<%= card.id %>/eliminar" class="mt-1" data-confirm="¿Eliminar esta tarjeta? Si tiene movimientos, se archiva y los movimientos se conservan.">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-danger btn-block" type="submit">Eliminar tarjeta</button>
+    </form>
+  </details>
+</section>

@@ -1,0 +1,182 @@
+<% const currency = user.currency; %>
+<% const kind = (tx && tx.kind) || preset.kind || 'gasto';
+   const isCardPayment = tx && tx.card_id && tx.kind === 'transferencia';
+   const fromCard = tx && tx.card_id && tx.kind === 'gasto' ? 'tarjeta:' + tx.card_id : (String(preset.container_from_id || '').startsWith('tarjeta:') ? preset.container_from_id : ''); %>
+<form method="post" action="<%= tx ? '/movimientos/' + tx.id : '/movimientos' %>" class="stack" id="tx-form" data-new="<%= tx ? 0 : 1 %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <!-- Tipo de movimiento -->
+  <div class="segmented" id="kind-picker">
+    <label class="<%= kind === 'gasto' ? 'active' : '' %>">
+      <input type="radio" name="kind" value="gasto" <%= kind === 'gasto' ? 'checked' : '' %>> Gasto
+    </label>
+    <label class="<%= kind === 'ingreso' ? 'active' : '' %>">
+      <input type="radio" name="kind" value="ingreso" <%= kind === 'ingreso' ? 'checked' : '' %>> Ingreso
+    </label>
+    <label class="<%= kind === 'transferencia' ? 'active' : '' %>">
+      <input type="radio" name="kind" value="transferencia" <%= kind === 'transferencia' ? 'checked' : '' %>> Mover
+    </label>
+  </div>
+
+  <% if (isCardPayment) { %>
+    <div class="alert alert-info"><span>Este es un pago de tarjeta de crédito. Aquí puedes cambiar el valor, la fecha y las notas; para lo demás, elimínalo y regístralo de nuevo desde Tarjetas.</span></div>
+  <% } %>
+
+  <!-- Valor y fecha -->
+  <section class="card">
+    <div class="field">
+      <label for="amount">Valor (<%= currency %>)</label>
+      <input id="amount" name="amount" class="input-money" type="text" <%= tx ? '' : 'autofocus' %> inputmode="decimal" required
+             placeholder="0" value="<%= tx ? (tx.amount / 100).toString().replace('.', ',') : (preset.amount || '') %>">
+    </div>
+    <div class="field">
+      <label for="date">Fecha</label>
+      <input id="date" name="date" type="date" value="<%= (tx && tx.date) || preset.date || dates.todayISO() %>">
+    </div>
+    <div class="field">
+      <label for="description">Descripción</label>
+      <input id="description" name="description" type="text" placeholder="Ej. Compra del mercado"
+             value="<%= (tx && tx.description) || preset.description || '' %>">
+    </div>
+  </section>
+
+  <!-- Cuentas / bolsillos -->
+  <section class="card">
+    <div class="field" id="field-from">
+      <label for="container_from_id">De dónde salió el dinero</label>
+      <% if (cards.length) { %><small class="muted">Si pagaste con tarjeta de crédito, elige la tarjeta: cuenta como gasto, pero no saca plata de tus bolsillos.</small><% } %>
+      <select id="container_from_id" name="container_from_id" data-picker>
+        <option value="">Elige cuenta o bolsillo…</option>
+        <% containers.forEach(function (c) { %>
+          <option value="<%= c.id %>" data-name="<%= c.name %>" data-bank="<%= c.bank_name %>" data-kind="<%= c.kind %>" data-raw="<%= c.balance %>" data-balance="<%= formatMoney(c.balance, currency) %>"
+            <%= ((tx && String(tx.container_from_id) === String(c.id)) || String(preset.container_from_id) === String(c.id)) ? 'selected' : '' %>>
+            <%= c.bank_name %> · <%= c.name %>
+          </option>
+        <% }) %>
+        <% cards.forEach(function (c) { %>
+          <option value="tarjeta:<%= c.id %>" data-name="<%= c.name %>" data-bank="Tarjeta<%= c.last4 ? ' •••• ' + c.last4 : '' %>" data-kind="tarjeta" data-card-available="<%= c.status.available %>" data-balance="Disponible <%= formatMoney(c.status.available, currency) %>" <%= fromCard === 'tarjeta:' + c.id ? 'selected' : '' %>>
+            Tarjeta · <%= c.name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field" id="field-to">
+      <label for="container_to_id">A dónde entra el dinero</label>
+      <select id="container_to_id" name="container_to_id" data-picker>
+        <option value="">Elige cuenta o bolsillo…</option>
+        <% containers.forEach(function (c) { %>
+          <option value="<%= c.id %>" data-name="<%= c.name %>" data-bank="<%= c.bank_name %>" data-kind="<%= c.kind %>" data-raw="<%= c.balance %>" data-balance="<%= formatMoney(c.balance, currency) %>"
+            <%= ((tx && String(tx.container_to_id) === String(c.id)) || String(preset.container_to_id) === String(c.id)) ? 'selected' : '' %>>
+            <%= c.bank_name %> · <%= c.name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+  </section>
+
+  <!-- Detalles del gasto -->
+  <section class="card" id="card-expense">
+    <div class="field">
+      <label for="expense_type">Tipo de gasto</label>
+      <select id="expense_type" name="expense_type">
+        <option value="variable" <%= (tx && tx.expense_type === 'variable') ? 'selected' : '' %>>Variable (sale del presupuesto)</option>
+        <option value="extra" <%= (tx && tx.expense_type === 'extra') ? 'selected' : '' %>>Extra (sale de un bolsillo)</option>
+        <option value="fijo" <%= (tx && tx.expense_type === 'fijo') ? 'selected' : '' %>>Fijo (recurrente)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="category_id">Categoría</label>
+      <select id="category_id" name="category_id" data-picker="chips">
+        <option value="">Sin categoría</option>
+        <% categories.filter(function (c) { return c.kind === 'gasto'; }).forEach(function (c) { %>
+          <% const lim = limits[c.id]; %>
+          <option value="<%= c.id %>" data-color="<%= c.color %>" <% if (lim) { %>data-hint="<%= c.name %>: llevas <%= formatMoney(lim.spent, currency) %> de <%= formatMoney(lim.limit, currency) %> (<%= lim.pct %> %)" data-hint-state="<%= lim.state %>" data-limit-left="<%= lim.left %>"<% } %> <%= (tx && String(tx.category_id) === String(c.id)) ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+      <p class="ej-hint" id="category-hint" aria-live="polite"></p>
+    </div>
+
+    <!-- Dividir en varias categorías -->
+    <details class="split-box" id="split-box" <%= splits.length ? 'open' : '' %>>
+      <summary class="link">Dividir en varias categorías</summary>
+      <input type="hidden" name="split_on" value="<%= splits.length ? '1' : '' %>" id="split-on">
+      <p class="muted mt-1">Por ejemplo, una compra en el supermercado que fue comida y aseo. Las partes deben sumar el valor total.</p>
+      <div class="split-rows" id="split-rows">
+        <% const rows = splits.length ? splits : [{}, {}]; rows.forEach(function (sp) { %>
+          <div class="split-row">
+            <select name="split_category[]" aria-label="Categoría de esta parte">
+              <option value="">Sin categoría</option>
+              <% categories.filter(function (c) { return c.kind === 'gasto'; }).forEach(function (c) { %>
+                <option value="<%= c.id %>" <%= String(sp.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+              <% }) %>
+            </select>
+            <input name="split_amount[]" inputmode="decimal" placeholder="0" aria-label="Valor de esta parte" value="<%= sp.amount ? (sp.amount / 100).toString().replace('.', ',') : '' %>">
+            <button type="button" class="ej-icon-btn split-del" aria-label="Quitar esta parte"><svg class="ic ic-sm"><use href="#i-x"/></svg></button>
+          </div>
+        <% }) %>
+      </div>
+      <div class="flex-between mt-1">
+        <button type="button" class="btn btn-ghost btn-sm" id="split-add">+ Agregar parte</button>
+        <span class="ej-hint" id="split-sum" aria-live="polite"></span>
+      </div>
+    </details>
+  </section>
+
+  <!-- Detalles del ingreso -->
+  <section class="card" id="card-income">
+    <div class="field">
+      <label for="income_source_id">Fuente del ingreso</label>
+      <select id="income_source_id" name="income_source_id" data-picker="chips">
+        <option value="">Dinero extra (no contemplado)</option>
+        <% sources.forEach(function (s) { %>
+          <option value="<%= s.id %>" <%= (tx && String(tx.income_source_id) === String(s.id)) ? 'selected' : '' %>><%= s.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="category_id_income">Categoría</label>
+      <select id="category_id_income" name="category_id" disabled data-picker="chips">
+        <option value="">Sin categoría</option>
+        <% categories.filter(function (c) { return c.kind === 'ingreso'; }).forEach(function (c) { %>
+          <option value="<%= c.id %>" data-color="<%= c.color %>" <%= (tx && String(tx.category_id) === String(c.id)) ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" name="notes" rows="2" placeholder="Opcional"><%= (tx && tx.notes) || '' %></textarea>
+    </div>
+    <div class="field receipt-field" id="receipt-field">
+      <label>Foto del recibo o factura</label>
+      <div class="receipt-list">
+        <% files.forEach(function (f) { %>
+          <figure class="receipt-thumb">
+            <a href="/adjuntos/<%= f.id %>" target="_blank" rel="noopener"><img src="/adjuntos/<%= f.id %>" alt="Recibo" loading="lazy"></a>
+            <button type="submit" class="ej-icon-btn receipt-del" formaction="/adjuntos/<%= f.id %>/eliminar" formnovalidate data-confirm="¿Eliminar esta foto del recibo?" aria-label="Eliminar foto"><svg class="ic ic-sm"><use href="#i-x"/></svg></button>
+          </figure>
+        <% }) %>
+        <figure class="receipt-thumb receipt-new" id="receipt-preview" hidden><img alt="Foto nueva"><button type="button" class="ej-icon-btn" id="receipt-clear" aria-label="Quitar foto"><svg class="ic ic-sm"><use href="#i-x"/></svg></button></figure>
+        <label class="receipt-add" for="receipt-file">
+          <svg class="ic"><use href="#i-camera"/></svg><span>Agregar foto</span>
+        </label>
+      </div>
+      <input type="file" id="receipt-file" accept="image/*" capture="environment" class="visually-hidden">
+      <input type="hidden" name="receipt_data" id="receipt-data">
+    </div>
+    <% if (tx && tx.email_link) { %>
+      <p class="muted">Origen: <a href="<%= tx.email_link %>" target="_blank" rel="noopener">correo original</a></p>
+    <% } %>
+  </section>
+
+  <div class="stack">
+    <button class="btn btn-primary btn-block" type="submit" id="tx-submit"><%= tx ? 'Guardar cambios' : (kind === 'ingreso' ? 'Guardar ingreso' : kind === 'transferencia' ? 'Mover dinero' : 'Guardar gasto') %></button>
+    <a class="btn btn-ghost btn-block" href="/movimientos">Cancelar</a>
+    <% if (tx) { %>
+      <button class="btn btn-danger btn-block" type="submit" formaction="/movimientos/<%= tx.id %>/eliminar" formmethod="post"
+              onclick="return confirm('¿Eliminar este movimiento? Los saldos se recalcularán.');">Eliminar movimiento</button>
+    <% } %>
+  </div>
+</form>
