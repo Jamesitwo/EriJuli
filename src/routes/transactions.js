@@ -11,6 +11,7 @@ const { listCards, cardById } = require('../services/cards');
 const { parseSplits, saveSplits, splitsFor } = require('../services/splits');
 const attachments = require('../services/attachments');
 const { categoryProgress } = require('../services/limits');
+const { scanDataUrl } = require('../services/receiptScan');
 
 const router = express.Router();
 
@@ -190,6 +191,16 @@ router.post('/movimientos/:id/eliminar', (req, res) => {
   log(req.user.id, 'transaction', tx.id, 'eliminar', `${tx.description} · ${formatMoney(tx.amount, req.user.currency)}`);
   setFlash(req, 'success', 'Movimiento eliminado y saldos corregidos.');
   res.redirect(req.body.back && String(req.body.back).startsWith('/') ? req.body.back : '/movimientos');
+});
+
+// Escanear un recibo o comprobante: devuelve los datos sugeridos (no guarda nada)
+router.post('/escanear', async (req, res) => {
+  try {
+    res.json(await scanDataUrl(req.user.id, req.body.image));
+  } catch (e) {
+    console.error('Escanear:', e.message);
+    res.status(e.status || 500).json({ ok: false, error: e.status ? e.message : 'No pudimos leer la imagen. Intenta con otra foto.' });
+  }
 });
 
 // Fotos de recibos (solo la dueña o el dueño del movimiento puede verlas)

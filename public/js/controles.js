@@ -175,6 +175,8 @@
       });
     }
 
+    // Otros scripts (ej. escanear recibo) pueden cambiar la fecha: input.value = '…' + evento 'ej:refresh'
+    input.addEventListener('ej:refresh', paintTrigger);
     paintTrigger();
   }
 

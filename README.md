@@ -28,6 +28,7 @@ Incluye una bandeja de revisión preparada para leer movimientos desde Gmail.
 | **Evolución** | Patrimonio (bancos − tarjetas) mes a mes e ingresos vs. gastos en Reportes |
 | **Hogar compartido** | Hogar con código de invitación, gastos en común, quién le debe a quién, saldar cuentas y presupuesto del hogar |
 | **Recibos** | Foto del recibo en cada movimiento (se reduce en el celular antes de subirla) |
+| **Escanear recibos** | Foto o captura de una factura o comprobante (Nequi, Bancolombia, Daviplata…): lee el texto en el propio servidor (OCR en español, sin enviar la imagen a terceros) y llena valor, fecha, descripción, tipo, cuenta, categoría y referencia para que solo revises y guardes |
 | **Seguridad** | Recuperar contraseña por correo o con códigos de recuperación, cambio de contraseña, bloqueo con PIN y huella / Face ID |
 | **Notificaciones** | Avisos en el celular de fijos por vencer, pagos de tarjeta, topes y saldo bajo |
 

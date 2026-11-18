@@ -302,6 +302,22 @@ try {
   await step('Recibo inválido se ignora', '/movimientos', { kind: 'gasto', amount: '1.000', date: dates0(), description: 'Recibo raro', container_from_id: cuenta.id, receipt_data: 'data:text/html;base64,PHNjcmlwdD4=' });
   ok(!one("SELECT 1 FROM attachments a JOIN transactions t ON t.id = a.transaction_id WHERE t.description = 'Recibo raro'"), 'No guarda archivos que no son imágenes');
 
+  // ----- Escanear un comprobante (OCR en el servidor)
+  {
+    const { readFileSync } = await import('node:fs');
+    const img = 'data:image/png;base64,' + readFileSync(path.join(ROOT, 'tests', 'comprobante-prueba.png')).toString('base64');
+    const before = one('SELECT COUNT(*) n FROM transactions').n;
+    r = await req('/escanear', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ _csrf: csrf, image: img }) });
+    let sc = {}; try { sc = JSON.parse(r.text); } catch { /* */ }
+    ok(r.status === 200 && sc.ok, 'Escanear responde', r.status + ' ' + r.text.slice(0, 120));
+    ok(sc.suggestion && sc.suggestion.amount === 15000000, 'Lee el valor del comprobante ($150.000)', sc.suggestion && sc.suggestion.amount);
+    ok(sc.suggestion && sc.suggestion.kind === 'gasto' && /Camila/.test(sc.suggestion.description), 'Entiende que es un envío a Camila', sc.suggestion && sc.suggestion.description);
+    ok(sc.suggestion && /M12345678/.test(sc.suggestion.notes), 'Toma la referencia');
+    ok(one('SELECT COUNT(*) n FROM transactions').n === before, 'Escanear no guarda nada por sí solo');
+    r = await req('/escanear', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ _csrf: csrf, image: 'data:text/html;base64,PGgxPg==' }) });
+    ok(r.status === 400, 'Rechaza archivos que no son imágenes', r.status);
+  }
+
   // ----- Hasta el próximo pago
   r = await get('/presupuesto'); ok(/por día/.test(r.text), 'Cuánto queda por día');
 

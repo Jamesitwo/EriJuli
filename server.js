@@ -42,6 +42,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/escanear', express.json({ limit: '12mb' })); // foto para leer el recibo
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // 10 MB: fotos de recibos
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {

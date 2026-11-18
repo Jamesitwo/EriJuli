@@ -139,3 +139,38 @@ select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Metas: el bolsillo ocupa su propia fila (sus opciones son largas) */
 .field-row:has(#g-container) { grid-template-columns: 1fr; }
 .goal-form .ej-hint { margin-top: 0; }
+
+/* ----- Escanear recibo o comprobante ----- */
+.scan-card {
+  position: relative; overflow: hidden;
+  background: var(--surface); border: 1.5px dashed var(--line-strong); border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+.scan-card.is-highlight { border-color: var(--monte); box-shadow: 0 0 0 3px var(--monte-soft); }
+.scan-main { display: flex; align-items: center; gap: var(--space-3); }
+.scan-icon { width: 44px; height: 44px; flex: none; border-radius: var(--radius-md); display: grid; place-items: center; background: var(--monte-soft); color: var(--monte); }
+.scan-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.scan-text small { line-height: 1.35; }
+.scan-btn { flex: none; cursor: pointer; }
+.scan-card:focus-within .scan-btn { outline: 2px solid var(--focus); outline-offset: 2px; }
+.scan-card.is-busy .scan-btn { pointer-events: none; opacity: .6; }
+.scan-card.is-busy::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 2px; top: 0;
+  background: linear-gradient(90deg, transparent, var(--monte), transparent);
+  animation: ej-scanline 1.6s ease-in-out infinite;
+}
+@keyframes ej-scanline { 0% { top: 0; } 50% { top: calc(100% - 2px); } 100% { top: 0; } }
+.scan-status { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); display: grid; gap: var(--space-2); font-size: .9375rem; }
+.scan-status > span:last-child { color: var(--ink-muted); }
+.scan-status:has(.scan-progress) { display: flex; align-items: center; gap: var(--space-3); }
+.scan-progress { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--monte-soft); border-top-color: var(--monte); animation: ej-spin .8s linear infinite; flex: none; }
+.scan-status.ok .scan-result { display: flex; gap: var(--space-2); align-items: flex-start; }
+.scan-status.ok .scan-result > .ic { color: var(--monte); margin-top: 3px; }
+.scan-status.ok .scan-result small { display: block; color: var(--ink-muted); }
+.scan-status.warn { color: var(--maiz-ink); }
+.scan-status.error { color: var(--alerta); }
+.scan-text-read pre { white-space: pre-wrap; font-size: .8125rem; line-height: 1.4; color: var(--ink-muted); background: var(--surface-sunk); border-radius: var(--radius-sm); padding: var(--space-3); margin-top: var(--space-2); max-height: 220px; overflow: auto; }
+
+/* Campos llenados por el escaneo: un brillo suave para que se vea qué cambió */
+.is-suggested { animation: ej-suggested 2.2s var(--ease-out, ease) both; }
+@keyframes ej-suggested { 0%, 35% { box-shadow: 0 0 0 3px var(--maiz); } 100% { box-shadow: 0 0 0 0 transparent; } }

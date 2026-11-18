@@ -22,6 +22,22 @@
     <div class="alert alert-info"><span>Este es un pago de tarjeta de crédito. Aquí puedes cambiar el valor, la fecha y las notas; para lo demás, elimínalo y regístralo de nuevo desde Tarjetas.</span></div>
   <% } %>
 
+  <% if (!tx) { %>
+  <!-- Escanear recibo o comprobante -->
+  <section class="scan-card <%= preset.escanear ? 'is-highlight' : '' %>" id="scan-card">
+    <div class="scan-main">
+      <span class="scan-icon" aria-hidden="true"><svg class="ic"><use href="#i-scan"/></svg></span>
+      <div class="scan-text">
+        <strong>Escanear recibo o comprobante</strong>
+        <small class="muted">Toma una foto o elige una captura (Nequi, Bancolombia, factura…) y llenamos el formulario por ti.</small>
+      </div>
+      <label class="btn btn-primary btn-sm scan-btn" for="scan-file">Escanear</label>
+    </div>
+    <input type="file" id="scan-file" accept="image/*" class="visually-hidden">
+    <div class="scan-status" id="scan-status" hidden aria-live="polite"></div>
+  </section>
+  <% } %>
+
   <!-- Valor y fecha -->
   <section class="card">
     <div class="field">
