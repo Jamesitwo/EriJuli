@@ -200,3 +200,12 @@
     apply();
   });
 })();
+
+// Correo dentro de la app: el marco crece al alto del contenido (el correo no ejecuta scripts)
+(() => {
+  const frame = document.querySelector('.email-frame');
+  if (!frame) return;
+  const fit = () => { try { const d = frame.contentDocument; if (d && d.body) frame.style.height = Math.max(420, d.documentElement.scrollHeight + 4) + 'px'; } catch { /* aislado */ } };
+  frame.addEventListener('load', () => { fit(); setTimeout(fit, 400); setTimeout(fit, 1500); });
+  window.addEventListener('resize', fit);
+})();

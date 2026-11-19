@@ -189,6 +189,75 @@ async function fetchBankEmails(userId, { days = 30, max = 50 } = {}) {
   return { messages, senders };
 }
 
+// ---------- ver un correo dentro de la app ----------
+/** Id del mensaje a partir del enlace guardado (…/#inbox/18c9… o …/#all/18c9…). */
+function messageIdFromLink(link) {
+  const m = /#[a-z]+\/([0-9a-f]{10,})\s*$/i.exec(String(link || ''));
+  return m ? m[1] : null;
+}
+
+/** Enlace que abre ESE correo en Gmail, en la cuenta correcta aunque tengas varias abiertas. */
+function webLink(userId, messageId) {
+  const conn = db.prepare('SELECT email FROM gmail_connections WHERE user_id = ?').get(userId);
+  const who = conn && conn.email ? encodeURIComponent(conn.email) : '0';
+  return `https://mail.google.com/mail/u/${who}/#all/${messageId}`;
+}
+
+function decodePart(part) {
+  if (!part || !part.body || !part.body.data) return '';
+  const buf = Buffer.from(part.body.data, 'base64url');
+  const ct = (part.headers || []).find((h) => h.name.toLowerCase() === 'content-type');
+  const charset = (/charset="?([\w-]+)/i.exec(ct ? ct.value : '') || [])[1] || 'utf-8';
+  try { return new TextDecoder(charset.toLowerCase()).decode(buf); } catch { return buf.toString('utf8'); }
+}
+
+/**
+ * Trae un correo completo para mostrarlo en la app. No se guarda: se consulta a Gmail
+ * cada vez que la persona lo abre (RC-14: el cuerpo nunca queda en la base de datos).
+ */
+async function getMessage(userId, messageId) {
+  const token = await getAccessToken(userId);
+  const r = await fetch(`${GMAIL_API}/messages/${encodeURIComponent(messageId)}?format=full`, { headers: { Authorization: `Bearer ${token}` } });
+  if (r.status === 404) throw new Error('Ese correo ya no existe en tu Gmail (quizás lo borraste).');
+  if (!r.ok) throw new Error(`No se pudo abrir el correo (${r.status}).`);
+  const msg = await r.json();
+  const headers = Object.fromEntries((msg.payload?.headers || []).map((h) => [h.name.toLowerCase(), h.value]));
+  let html = '', text = '';
+  const attachments = [];
+  (function walk(part) {
+    if (!part) return;
+    const type = String(part.mimeType || '').toLowerCase();
+    if (part.filename) attachments.push(part.filename);
+    else if (type === 'text/html' && !html) html = decodePart(part);
+    else if (type === 'text/plain' && !text) text = decodePart(part);
+    (part.parts || []).forEach(walk);
+  })(msg.payload);
+  return {
+    id: msg.id, from: headers.from || '', to: headers.to || '', subject: headers.subject || '(sin asunto)',
+    date: headers.date || '', html, text: text || msg.snippet || '', attachments,
+  };
+}
+
+/** Deja el HTML del correo listo para un iframe aislado: sin scripts, sin formularios y, si se pide, sin imágenes externas. */
+function safeEmailHtml(mail, { images = false } = {}) {
+  let body = mail.html;
+  if (!body) {
+    const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    body = `<pre style="white-space:pre-wrap;font:15px/1.5 system-ui,sans-serif;margin:0">${esc(mail.text)}</pre>`;
+  }
+  body = body
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<(iframe|object|embed|form|meta|base|link)\b[^>]*>/gi, '')
+    .replace(/<\/(iframe|object|embed|form)>/gi, '')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(href|src)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '$1="#"');
+  const img = images ? 'https: data: cid:' : 'data:';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${img}; style-src 'unsafe-inline' https:; font-src https: data:">
+<base target="_blank"><style>html,body{margin:0;padding:12px;background:#fff;color:#14231c;font-family:system-ui,sans-serif;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%!important}</style>
+</head><body>${body}</body></html>`;
+}
+
 /**
  * Busca la cuenta o tarjeta del correo: primero por los últimos 4 dígitos (RC-21),
  * luego por el banco asociado al remitente (RC-06). También ubica el efectivo para los retiros.
@@ -224,7 +293,7 @@ async function syncUser(userId, opts = {}) {
     if (seen) { result.duplicados++; continue; }
 
     const parsed = parseBankEmail(msg, senders);
-    const emailLink = `https://mail.google.com/mail/u/0/#inbox/${msg.id}`;
+    const emailLink = webLink(userId, msg.id);
 
     // Duplicado contra movimientos manuales (mismo día, valor y descripción)
     if (parsed && parsed.date) {
@@ -284,4 +353,5 @@ async function syncUser(userId, opts = {}) {
 module.exports = {
   gmailStatus, authUrl, exchangeCode, getAccessToken, revoke, syncUser,
   getConnection, saveConnection, deleteConnection, listSenders, SCOPES, redirectUri, matchAccount,
+  messageIdFromLink, webLink, getMessage, safeEmailHtml,
 };

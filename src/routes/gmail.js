@@ -97,4 +97,29 @@ router.post('/gmail/remitentes/:id/eliminar', (req, res) => {
   res.redirect('/bandeja');
 });
 
+// Ver un correo del banco dentro de la app (solo los que la app ya procesó para esta persona)
+router.get('/correo/:msgId', async (req, res) => {
+  const msgId = String(req.params.msgId || '');
+  const back = String(req.query.volver || '').startsWith('/') ? String(req.query.volver) : '/bandeja';
+  const known = /^[0-9a-f]{10,}$/i.test(msgId) && (
+    db.prepare('SELECT 1 FROM processed_emails WHERE user_id = ? AND message_id = ?').get(req.user.id, msgId)
+    || db.prepare(`SELECT 1 FROM proposed_movements WHERE user_id = ? AND email_link LIKE ?`).get(req.user.id, '%/' + msgId)
+    || db.prepare(`SELECT 1 FROM transactions WHERE user_id = ? AND email_link LIKE ?`).get(req.user.id, '%/' + msgId));
+  if (!known) { setFlash(req, 'error', 'Ese correo no está entre los que la app leyó para ti.'); return res.redirect(back); }
+  if (!gmail.getConnection(req.user.id)) { setFlash(req, 'error', 'Conecta Gmail para ver el correo dentro de la app.'); return res.redirect(back); }
+  try {
+    const mail = await gmail.getMessage(req.user.id, msgId);
+    const images = req.query.imagenes === '1';
+    res.setHeader('Cache-Control', 'no-store');
+    res.render('inbox/email', {
+      title: 'Correo del banco', mail, images, back, msgId,
+      srcdoc: gmail.safeEmailHtml(mail, { images }),
+      gmailLink: gmail.webLink(req.user.id, msgId),
+    });
+  } catch (e) {
+    setFlash(req, 'error', e.message);
+    res.redirect(back);
+  }
+});
+
 module.exports = router;

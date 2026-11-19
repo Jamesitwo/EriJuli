@@ -198,3 +198,13 @@ select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proposal-body p { overflow-wrap: anywhere; }
 .proposal-body input, .proposal-body select, .proposal-body .ej-select, .proposal-body button { max-width: 100%; }
 .proposal-form [data-for][hidden] { display: none !important; }
+
+/* Ver correo dentro de la app */
+.email-view { display: grid; gap: var(--space-3); min-width: 0; }
+.email-view > .btn { justify-self: start; }
+.email-subject { font-size: 1.15rem; line-height: 1.35; margin: 0; overflow-wrap: anywhere; }
+.email-meta { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: .875rem; }
+.email-meta dt { color: var(--ink-3, #5a6560); font-weight: 600; }
+.email-meta dd { margin: 0; overflow-wrap: anywhere; }
+.email-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.email-frame { width: 100%; min-height: 420px; border: 1px solid var(--line); border-radius: var(--radius-md, 12px); background: #fff; display: block; }

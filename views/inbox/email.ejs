@@ -1,0 +1,21 @@
+<% const q = function (extra) { return '/correo/' + msgId + '?volver=' + encodeURIComponent(back) + (extra || ''); }; %>
+<section class="card email-view">
+  <a class="btn btn-ghost btn-sm" href="<%= back %>">← Volver</a>
+  <h1 class="email-subject"><%= mail.subject %></h1>
+  <dl class="email-meta">
+    <dt>De</dt><dd><%= mail.from %></dd>
+    <% if (mail.to) { %><dt>Para</dt><dd><%= mail.to %></dd><% } %>
+    <dt>Fecha</dt><dd><%= mail.date ? new Date(mail.date).toLocaleString('es-CO', { timeZone: user.timezone || 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' }) : '' %></dd>
+    <% if (mail.attachments.length) { %><dt>Adjuntos</dt><dd><%= mail.attachments.join(', ') %></dd><% } %>
+  </dl>
+  <div class="email-actions">
+    <% if (!images) { %>
+      <a class="btn btn-ghost btn-sm" href="<%= q('&imagenes=1') %>">Mostrar imágenes</a>
+    <% } else { %>
+      <a class="btn btn-ghost btn-sm" href="<%= q('') %>">Ocultar imágenes</a>
+    <% } %>
+    <a class="btn btn-ghost btn-sm" href="<%= gmailLink %>" target="_blank" rel="noopener">Abrir en Gmail</a>
+  </div>
+  <% if (!images) { %><p class="muted"><small>Las imágenes externas están ocultas para que el remitente no sepa cuándo abres el correo.</small></p><% } %>
+  <iframe class="email-frame" title="Contenido del correo" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" srcdoc="<%= srcdoc %>"></iframe>
+</section>

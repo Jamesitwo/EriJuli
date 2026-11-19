@@ -183,7 +183,8 @@
       <input type="hidden" name="receipt_data" id="receipt-data">
     </div>
     <% if (tx && tx.email_link) { %>
-      <p class="muted">Origen: <a href="<%= tx.email_link %>" target="_blank" rel="noopener">correo original</a></p>
+      <% const mid = (/#[a-z]+\/([0-9a-f]{10,})\s*$/i.exec(tx.email_link) || [])[1]; %>
+      <p class="muted">Origen: <a href="<%= mid ? '/correo/' + mid + '?volver=' + encodeURIComponent('/movimientos/' + tx.id + '/editar') : tx.email_link %>" <%= mid ? '' : 'target="_blank" rel="noopener"' %>>ver el correo original</a></p>
     <% } %>
   </section>
 

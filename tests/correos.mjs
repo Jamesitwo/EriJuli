@@ -54,6 +54,11 @@ globalThis.fetch = async (url) => {
   const json = (o) => ({ ok: true, status: 200, json: async () => o });
   if (u2.includes('/messages?q=')) { query = decodeURIComponent(u2.split('q=')[1].split('&')[0]); return json({ messages: Object.keys(mails).map((id) => ({ id })) }); }
   const id = /messages\/(\w+)\?/.exec(u2)[1];
+  if (u2.includes('format=full')) {
+    const html = '<html><body><h1>Bancolombia</h1><p>' + mails[id][1] + '</p><img src="https://tracker.example/p.gif"><script>alert(1)</script><a href="javascript:alert(2)" onclick="x()">link</a></body></html>';
+    return json({ id, snippet: mails[id][1], payload: { mimeType: 'multipart/alternative', headers: [{ name: 'From', value: mails[id][0] }, { name: 'Subject', value: 'Alertas y Notificaciones' }, { name: 'Date', value: 'Mon, 17 Nov 2026 10:00:00 -0500' }],
+      parts: [{ mimeType: 'text/plain', body: { data: Buffer.from(mails[id][1]).toString('base64url') } }, { mimeType: 'text/html', headers: [{ name: 'Content-Type', value: 'text/html; charset="UTF-8"' }], body: { data: Buffer.from(html).toString('base64url') } }] } });
+  }
   return json({ id, snippet: mails[id][1], payload: { headers: [{ name: 'From', value: mails[id][0] }, { name: 'Subject', value: 'Alertas y Notificaciones' }, { name: 'Date', value: 'Mon, 17 Nov 2026 10:00:00 -0500' }] } });
 };
 
@@ -76,6 +81,16 @@ ok(!db.prepare('SELECT 1 FROM transactions WHERE user_id = ?').get(u), 'Nada afe
 ok(ahorro && true, 'Otra cuenta sin 4 dígitos no interfiere');
 const again = await gmail.syncUser(u, { days: 30 });
 ok(again.duplicados === 5 && again.propuestos === 0, 'Volver a sincronizar no duplica (RC-10)', JSON.stringify(again));
+
+// ---------- Ver el correo dentro de la app
+ok(a && a.email_link === 'https://mail.google.com/mail/u/correo%40gmail.com/#all/m1', 'El enlace abre ese correo en la cuenta correcta de Gmail', a && a.email_link);
+ok(gmail.messageIdFromLink('https://mail.google.com/mail/u/0/#inbox/18c9a7f3b2e4d5a6') === '18c9a7f3b2e4d5a6', 'Reconoce enlaces viejos (#inbox)');
+const mail = await gmail.getMessage(u, 'm2');
+ok(mail.subject === 'Alertas y Notificaciones' && /Pagaste \$6,500\.00/.test(mail.html) && /Pagaste/.test(mail.text), 'Trae el correo completo (HTML y texto)');
+const safe = gmail.safeEmailHtml(mail);
+ok(!/<script/i.test(safe) && !/javascript:/i.test(safe) && !/onclick/i.test(safe), 'El correo se muestra sin scripts ni enlaces peligrosos');
+ok(/img-src data:;/.test(safe) && /img-src https:/.test(gmail.safeEmailHtml(mail, { images: true })), 'Imágenes externas ocultas salvo que la persona las muestre');
+ok(!db.prepare("SELECT 1 FROM proposed_movements WHERE reason LIKE '%Bancolombia</h1>%'").get(), 'El cuerpo del correo no se guarda en la base (RC-14)');
 
 try { rmSync(TMP, { recursive: true, force: true }); } catch { /* temporal */ }
 console.log(`\nEriJuli · correos del banco\n  Correctas: ${pass}\n  Fallas:    ${fail}`);

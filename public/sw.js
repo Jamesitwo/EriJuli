@@ -1,5 +1,5 @@
 // Service Worker: la app abre rápido y funciona sin conexión en modo lectura
-const CACHE = 'erijuli-v18';
+const CACHE = 'erijuli-v19';
 const SHELL = ['/', '/css/app.css', '/css/controles.css', '/js/app.js', '/js/controles.js', '/js/ux.js', '/css/ux.css', '/js/features.js', '/css/features.css', '/js/animaciones.js', '/css/animaciones.css', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (e) => {
