@@ -124,10 +124,11 @@
   </section>
 <% } %>
 
+<% const senderName = function (v) { const m = /^\s*"?([^"<]+?)"?\s*</.exec(v || ''); return m ? m[1].trim() : String(v || '').replace(/^.*@/, ''); }; %>
 <% items.forEach(function (p) { %>
   <section class="proposal">
     <div class="proposal-head">
-      <span style="display:flex;gap:6px;align-items:center"><svg class="ic ic-sm"><use href="#i-mail"/></svg><%= p.status === 'sin_procesar' ? 'Sin procesar' : 'Propuesto' %><%= p.email_sender ? ' · ' + p.email_sender : '' %></span>
+      <span style="display:flex;gap:6px;align-items:center"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="proposal-from"><%= p.status === 'sin_procesar' ? 'Sin procesar' : 'Propuesto' %><%= p.email_sender ? ' · ' + senderName(p.email_sender) : '' %></span></span>
       <% if (p.email_link) { %><a href="<%= p.email_link %>" target="_blank" rel="noopener">Ver correo</a><% } %>
     </div>
     <div class="proposal-body">
@@ -137,12 +138,11 @@
     </div>
     <p class="muted">
       <%= dates.formatDate(p.date) %>
-      <% if (p.email_sender) { %> · de: <%= p.email_sender %><% } %>
       <% if (p.email_subject) { %> · "<%= p.email_subject %>"<% } %>
       <% if (p.status === 'sin_procesar') { %> · <span class="badge badge-warning">sin procesar</span><% } %>
     </p>
     <% if (p.reason) { %><p class="muted"><small><%= p.reason %></small></p><% } %>
-    <form method="post" action="/bandeja/<%= p.id %>/aceptar" class="stack">
+    <form method="post" action="/bandeja/<%= p.id %>/aceptar" class="stack proposal-form" data-kind="<%= p.kind %>">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field-row">
         <div class="field">
@@ -171,7 +171,7 @@
           <% }) %>
         </select>
       </div>
-      <div class="field">
+      <div class="field" data-for="gasto transferencia">
         <label>De dónde salió</label>
         <select name="container_from_id">
           <option value="">Elegir…</option>
@@ -185,7 +185,7 @@
           </optgroup><% } %>
         </select>
       </div>
-      <div class="field">
+      <div class="field" data-for="ingreso transferencia">
         <label>A dónde entró</label>
         <select name="container_to_id">
           <option value="">Elegir…</option>

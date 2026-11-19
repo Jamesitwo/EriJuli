@@ -186,3 +186,17 @@
     $('#receipt-clear').addEventListener('click', () => { data.value = ''; file.value = ''; prev.hidden = true; });
   }
 })();
+
+// Bandeja: en cada propuesta solo se ven las cuentas que aplican al tipo (ingreso, gasto o movimiento)
+(() => {
+  document.querySelectorAll('.proposal-form').forEach((form) => {
+    const kind = form.querySelector('select[name="kind"]');
+    if (!kind) return;
+    const apply = () => {
+      form.dataset.kind = kind.value;
+      form.querySelectorAll('[data-for]').forEach((el) => { el.hidden = !el.dataset.for.split(' ').includes(kind.value); });
+    };
+    kind.addEventListener('change', apply);
+    apply();
+  });
+})();

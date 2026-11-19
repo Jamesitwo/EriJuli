@@ -185,3 +185,16 @@ select { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .danger-zone h2 { color: var(--alerta); }
 .consent-note { font-size: .9rem; }
 .consent-note ul { padding-left: 1.1rem; margin: .4rem 0; display: grid; gap: .25rem; }
+
+/* Bandeja: una propuesta nunca se sale de la pantalla (remitentes y textos largos sin espacios) */
+.proposal { min-width: 0; max-width: 100%; }
+.proposal-head > span { min-width: 0; flex: 1; }
+.proposal-head a { flex-shrink: 0; }
+.proposal-from { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proposal-body { grid-template-columns: minmax(0, 1fr); }
+.proposal-body > *, .proposal-body form, .proposal-body .field, .proposal-body .field-row > * { min-width: 0; }
+.proposal-body .card-head { flex-wrap: wrap; gap: var(--space-2); }
+.proposal-body .card-head h2 { min-width: 0; overflow-wrap: anywhere; flex: 1 1 12rem; }
+.proposal-body p { overflow-wrap: anywhere; }
+.proposal-body input, .proposal-body select, .proposal-body .ej-select, .proposal-body button { max-width: 100%; }
+.proposal-form [data-for][hidden] { display: none !important; }
